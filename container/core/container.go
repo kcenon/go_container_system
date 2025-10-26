@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/vmihailenco/msgpack/v5"
@@ -357,6 +358,90 @@ func (c *ValueContainer) FromMessagePack(data []byte) error {
 
 	// TODO: Deserialize values
 	// This would require a value factory to create values based on type
+
+	return nil
+}
+
+// SaveToFile saves the container to a file
+func (c *ValueContainer) SaveToFile(filePath string) error {
+	data, err := c.SerializeArray()
+	if err != nil {
+		return fmt.Errorf("serialization failed: %w", err)
+	}
+
+	if err := os.WriteFile(filePath, data, 0644); err != nil {
+		return fmt.Errorf("file write failed: %w", err)
+	}
+
+	return nil
+}
+
+// LoadFromFile loads the container from a file
+func (c *ValueContainer) LoadFromFile(filePath string) error {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return fmt.Errorf("file read failed: %w", err)
+	}
+
+	if err := c.DeserializeArray(data); err != nil {
+		return fmt.Errorf("deserialization failed: %w", err)
+	}
+
+	return nil
+}
+
+// SaveToFileMessagePack saves the container to a file in MessagePack format
+func (c *ValueContainer) SaveToFileMessagePack(filePath string) error {
+	data, err := c.ToMessagePack()
+	if err != nil {
+		return fmt.Errorf("messagepack serialization failed: %w", err)
+	}
+
+	if err := os.WriteFile(filePath, data, 0644); err != nil {
+		return fmt.Errorf("file write failed: %w", err)
+	}
+
+	return nil
+}
+
+// LoadFromFileMessagePack loads the container from a MessagePack file
+func (c *ValueContainer) LoadFromFileMessagePack(filePath string) error {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return fmt.Errorf("file read failed: %w", err)
+	}
+
+	if err := c.FromMessagePack(data); err != nil {
+		return fmt.Errorf("messagepack deserialization failed: %w", err)
+	}
+
+	return nil
+}
+
+// SaveToFileJSON saves the container to a JSON file
+func (c *ValueContainer) SaveToFileJSON(filePath string) error {
+	jsonStr, err := c.ToJSON()
+	if err != nil {
+		return fmt.Errorf("json serialization failed: %w", err)
+	}
+
+	if err := os.WriteFile(filePath, []byte(jsonStr), 0644); err != nil {
+		return fmt.Errorf("file write failed: %w", err)
+	}
+
+	return nil
+}
+
+// SaveToFileXML saves the container to an XML file
+func (c *ValueContainer) SaveToFileXML(filePath string) error {
+	xmlStr, err := c.ToXML()
+	if err != nil {
+		return fmt.Errorf("xml serialization failed: %w", err)
+	}
+
+	if err := os.WriteFile(filePath, []byte(xmlStr), 0644); err != nil {
+		return fmt.Errorf("file write failed: %w", err)
+	}
 
 	return nil
 }

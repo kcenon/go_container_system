@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"os"
 	"testing"
 
 	"github.com/kcenon/go_container_system/container/core"
@@ -269,4 +270,99 @@ func TestMessagePackSerialization(t *testing.T) {
 	if newContainer.MessageType() != "msgpack_test" {
 		t.Errorf("Expected message type 'msgpack_test', got '%s'", newContainer.MessageType())
 	}
+}
+
+func TestFileIOOperations(t *testing.T) {
+	// Create test container
+	container := core.NewValueContainerFull(
+		"file_test_source", "sub1",
+		"file_test_target", "sub2",
+		"file_test_message",
+	)
+	container.AddValue(values.NewStringValue("test_data", "Hello, File I/O!"))
+	container.AddValue(values.NewInt32Value("count", 42))
+
+	// Test save/load with string format
+	t.Run("StringFormat", func(t *testing.T) {
+		filePath := "/tmp/test_container.dat"
+		defer os.Remove(filePath)
+
+		// Save
+		if err := container.SaveToFile(filePath); err != nil {
+			t.Fatalf("SaveToFile failed: %v", err)
+		}
+
+		// Load
+		loadedContainer := core.NewValueContainer()
+		if err := loadedContainer.LoadFromFile(filePath); err != nil {
+			t.Fatalf("LoadFromFile failed: %v", err)
+		}
+
+		// Verify
+		if loadedContainer.SourceID() != "file_test_source" {
+			t.Errorf("Expected source 'file_test_source', got '%s'", loadedContainer.SourceID())
+		}
+	})
+
+	// Test save/load with MessagePack format
+	t.Run("MessagePackFormat", func(t *testing.T) {
+		filePath := "/tmp/test_container.msgpack"
+		defer os.Remove(filePath)
+
+		// Save
+		if err := container.SaveToFileMessagePack(filePath); err != nil {
+			t.Fatalf("SaveToFileMessagePack failed: %v", err)
+		}
+
+		// Load
+		loadedContainer := core.NewValueContainer()
+		if err := loadedContainer.LoadFromFileMessagePack(filePath); err != nil {
+			t.Fatalf("LoadFromFileMessagePack failed: %v", err)
+		}
+
+		// Verify
+		if loadedContainer.MessageType() != "file_test_message" {
+			t.Errorf("Expected message type 'file_test_message', got '%s'", loadedContainer.MessageType())
+		}
+
+		// Check file size
+		fileInfo, _ := os.Stat(filePath)
+		t.Logf("MessagePack file size: %d bytes", fileInfo.Size())
+	})
+
+	// Test save with JSON format
+	t.Run("JSONFormat", func(t *testing.T) {
+		filePath := "/tmp/test_container.json"
+		defer os.Remove(filePath)
+
+		// Save
+		if err := container.SaveToFileJSON(filePath); err != nil {
+			t.Fatalf("SaveToFileJSON failed: %v", err)
+		}
+
+		// Verify file exists and has content
+		fileInfo, err := os.Stat(filePath)
+		if err != nil {
+			t.Fatalf("File not created: %v", err)
+		}
+		t.Logf("JSON file size: %d bytes", fileInfo.Size())
+	})
+
+	// Test save with XML format
+	t.Run("XMLFormat", func(t *testing.T) {
+		filePath := "/tmp/test_container.xml"
+		defer os.Remove(filePath)
+
+		// Save
+		if err := container.SaveToFileXML(filePath); err != nil {
+			t.Fatalf("SaveToFileXML failed: %v", err)
+		}
+
+		// Verify file exists and has content
+		fileInfo, err := os.Stat(filePath)
+		if err != nil {
+			t.Fatalf("File not created: %v", err)
+		}
+		t.Logf("XML file size: %d bytes", fileInfo.Size())
+	})
 }
