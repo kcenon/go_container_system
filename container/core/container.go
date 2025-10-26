@@ -215,7 +215,21 @@ func (c *ValueContainer) Copy(containingValues bool) *ValueContainer {
 }
 
 // Serialize serializes the container to string format
+//
+// DEPRECATED: Use wireprotocol.SerializeCppWire() instead for cross-language compatibility.
+// This legacy pipe-delimited format will be removed in version 2.0.0 (scheduled for July 2025).
+//
+// Migration guide: https://github.com/kcenon/container_system/blob/main/MIGRATION_GUIDE.md
+//
+// Example migration:
+//   import "github.com/kcenon/go_container_system/container/wireprotocol"
+//   wireData, err := wireprotocol.SerializeCppWire(container)
 func (c *ValueContainer) Serialize() (string, error) {
+	// Log deprecation warning to stderr
+	fmt.Fprintln(os.Stderr, "WARNING: ValueContainer.Serialize() is deprecated and will be removed in v2.0.0 (July 2025).")
+	fmt.Fprintln(os.Stderr, "         Use wireprotocol.SerializeCppWire() for cross-language compatibility.")
+	fmt.Fprintln(os.Stderr, "         See: https://github.com/kcenon/container_system/blob/main/MIGRATION_GUIDE.md")
+
 	// Header: sourceID|sourceSubID|targetID|targetSubID|messageType|version
 	header := fmt.Sprintf("%s|%s|%s|%s|%s|%s",
 		c.sourceID, c.sourceSubID, c.targetID, c.targetSubID,
@@ -236,6 +250,11 @@ func (c *ValueContainer) Serialize() (string, error) {
 }
 
 // SerializeArray serializes the container to byte array
+//
+// DEPRECATED: Use wireprotocol.SerializeCppWire() instead for cross-language compatibility.
+// This legacy format will be removed in version 2.0.0 (scheduled for July 2025).
+//
+// Migration guide: https://github.com/kcenon/container_system/blob/main/MIGRATION_GUIDE.md
 func (c *ValueContainer) SerializeArray() ([]byte, error) {
 	str, err := c.Serialize()
 	if err != nil {
@@ -245,7 +264,21 @@ func (c *ValueContainer) SerializeArray() ([]byte, error) {
 }
 
 // Deserialize deserializes from string
+//
+// DEPRECATED: Use wireprotocol.DeserializeCppWire() instead for cross-language compatibility.
+// This legacy pipe-delimited format will be removed in version 2.0.0 (scheduled for July 2025).
+//
+// Migration guide: https://github.com/kcenon/container_system/blob/main/MIGRATION_GUIDE.md
+//
+// Example migration:
+//   import "github.com/kcenon/go_container_system/container/wireprotocol"
+//   container, err := wireprotocol.DeserializeCppWire(wireData)
 func (c *ValueContainer) Deserialize(data string) error {
+	// Log deprecation warning to stderr
+	fmt.Fprintln(os.Stderr, "WARNING: ValueContainer.Deserialize() is deprecated and will be removed in v2.0.0 (July 2025).")
+	fmt.Fprintln(os.Stderr, "         Use wireprotocol.DeserializeCppWire() for cross-language compatibility.")
+	fmt.Fprintln(os.Stderr, "         See: https://github.com/kcenon/container_system/blob/main/MIGRATION_GUIDE.md")
+
 	lines := strings.Split(data, "\n")
 	if len(lines) < 1 {
 		return fmt.Errorf("invalid data format")
@@ -269,12 +302,27 @@ func (c *ValueContainer) Deserialize(data string) error {
 }
 
 // DeserializeArray deserializes from byte array
+//
+// DEPRECATED: Use wireprotocol.DeserializeCppWire() instead for cross-language compatibility.
+// This legacy format will be removed in version 2.0.0 (scheduled for July 2025).
+//
+// Migration guide: https://github.com/kcenon/container_system/blob/main/MIGRATION_GUIDE.md
 func (c *ValueContainer) DeserializeArray(data []byte) error {
 	return c.Deserialize(string(data))
 }
 
 // ToXML converts to XML representation
+//
+// DEPRECATED: Use wireprotocol.SerializeCppWire() instead for cross-language compatibility.
+// XML format is not compatible with C++/Python/Rust systems and will be removed in version 2.0.0 (July 2025).
+//
+// Migration guide: https://github.com/kcenon/container_system/blob/main/MIGRATION_GUIDE.md
 func (c *ValueContainer) ToXML() (string, error) {
+	// Log deprecation warning to stderr
+	fmt.Fprintln(os.Stderr, "WARNING: ValueContainer.ToXML() is deprecated and will be removed in v2.0.0 (July 2025).")
+	fmt.Fprintln(os.Stderr, "         Use wireprotocol.SerializeCppWire() for cross-language compatibility.")
+	fmt.Fprintln(os.Stderr, "         See: https://github.com/kcenon/container_system/blob/main/MIGRATION_GUIDE.md")
+
 	type XMLContainer struct {
 		XMLName     xml.Name `xml:"container"`
 		SourceID    string   `xml:"source_id"`
@@ -312,7 +360,17 @@ func (c *ValueContainer) ToXML() (string, error) {
 }
 
 // ToJSON converts to JSON representation
+//
+// DEPRECATED: Use wireprotocol.SerializeCppWire() instead for cross-language compatibility.
+// JSON format is not compatible with C++/Python/Rust systems and will be removed in version 2.0.0 (July 2025).
+//
+// Migration guide: https://github.com/kcenon/container_system/blob/main/MIGRATION_GUIDE.md
 func (c *ValueContainer) ToJSON() (string, error) {
+	// Log deprecation warning to stderr
+	fmt.Fprintln(os.Stderr, "WARNING: ValueContainer.ToJSON() is deprecated and will be removed in v2.0.0 (July 2025).")
+	fmt.Fprintln(os.Stderr, "         Use wireprotocol.SerializeCppWire() for cross-language compatibility.")
+	fmt.Fprintln(os.Stderr, "         See: https://github.com/kcenon/container_system/blob/main/MIGRATION_GUIDE.md")
+
 	jsonCont := map[string]interface{}{
 		"source_id":     c.sourceID,
 		"source_sub_id": c.sourceSubID,
@@ -345,7 +403,17 @@ func (c *ValueContainer) ToJSON() (string, error) {
 }
 
 // ToMessagePack serializes to MessagePack binary format
+//
+// DEPRECATED: Use wireprotocol.SerializeCppWire() instead for cross-language compatibility.
+// MessagePack format is not compatible with C++/Python/Rust systems and will be removed in version 2.0.0 (July 2025).
+//
+// Migration guide: https://github.com/kcenon/container_system/blob/main/MIGRATION_GUIDE.md
 func (c *ValueContainer) ToMessagePack() ([]byte, error) {
+	// Log deprecation warning to stderr
+	fmt.Fprintln(os.Stderr, "WARNING: ValueContainer.ToMessagePack() is deprecated and will be removed in v2.0.0 (July 2025).")
+	fmt.Fprintln(os.Stderr, "         Use wireprotocol.SerializeCppWire() for cross-language compatibility.")
+	fmt.Fprintln(os.Stderr, "         See: https://github.com/kcenon/container_system/blob/main/MIGRATION_GUIDE.md")
+
 	// Create a map structure for MessagePack
 	mpData := map[string]interface{}{
 		"source_id":     c.sourceID,
@@ -374,7 +442,17 @@ func (c *ValueContainer) ToMessagePack() ([]byte, error) {
 }
 
 // FromMessagePack deserializes from MessagePack binary format
+//
+// DEPRECATED: Use wireprotocol.DeserializeCppWire() instead for cross-language compatibility.
+// MessagePack format is not compatible with C++/Python/Rust systems and will be removed in version 2.0.0 (July 2025).
+//
+// Migration guide: https://github.com/kcenon/container_system/blob/main/MIGRATION_GUIDE.md
 func (c *ValueContainer) FromMessagePack(data []byte) error {
+	// Log deprecation warning to stderr
+	fmt.Fprintln(os.Stderr, "WARNING: ValueContainer.FromMessagePack() is deprecated and will be removed in v2.0.0 (July 2025).")
+	fmt.Fprintln(os.Stderr, "         Use wireprotocol.DeserializeCppWire() for cross-language compatibility.")
+	fmt.Fprintln(os.Stderr, "         See: https://github.com/kcenon/container_system/blob/main/MIGRATION_GUIDE.md")
+
 	var mpData map[string]interface{}
 	if err := msgpack.Unmarshal(data, &mpData); err != nil {
 		return err
