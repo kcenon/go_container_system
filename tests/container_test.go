@@ -231,3 +231,42 @@ func TestXMLSerialization(t *testing.T) {
 	}
 	t.Logf("XML: %s", xml)
 }
+
+func TestMessagePackSerialization(t *testing.T) {
+	// Create container with values
+	container := core.NewValueContainerFull(
+		"test_source", "sub1",
+		"test_target", "sub2",
+		"msgpack_test",
+	)
+	container.AddValue(values.NewStringValue("name", "Charlie"))
+	container.AddValue(values.NewInt32Value("age", 35))
+
+	// Serialize to MessagePack
+	mpData, err := container.ToMessagePack()
+	if err != nil {
+		t.Errorf("ToMessagePack failed: %v", err)
+	}
+	if len(mpData) == 0 {
+		t.Error("MessagePack data is empty")
+	}
+	t.Logf("MessagePack size: %d bytes", len(mpData))
+
+	// Deserialize from MessagePack
+	newContainer := core.NewValueContainer()
+	err = newContainer.FromMessagePack(mpData)
+	if err != nil {
+		t.Errorf("FromMessagePack failed: %v", err)
+	}
+
+	// Verify header fields
+	if newContainer.SourceID() != "test_source" {
+		t.Errorf("Expected source 'test_source', got '%s'", newContainer.SourceID())
+	}
+	if newContainer.TargetID() != "test_target" {
+		t.Errorf("Expected target 'test_target', got '%s'", newContainer.TargetID())
+	}
+	if newContainer.MessageType() != "msgpack_test" {
+		t.Errorf("Expected message type 'msgpack_test', got '%s'", newContainer.MessageType())
+	}
+}

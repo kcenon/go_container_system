@@ -12,6 +12,8 @@ import (
 	"encoding/xml"
 	"fmt"
 	"strings"
+
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 // ValueContainer represents a message container with header and values
@@ -295,4 +297,66 @@ func (c *ValueContainer) ToJSON() (string, error) {
 		return "", err
 	}
 	return string(data), nil
+}
+
+// ToMessagePack serializes to MessagePack binary format
+func (c *ValueContainer) ToMessagePack() ([]byte, error) {
+	// Create a map structure for MessagePack
+	mpData := map[string]interface{}{
+		"source_id":     c.sourceID,
+		"source_sub_id": c.sourceSubID,
+		"target_id":     c.targetID,
+		"target_sub_id": c.targetSubID,
+		"message_type":  c.messageType,
+		"version":       c.version,
+		"values":        make([]map[string]interface{}, 0),
+	}
+
+	// Serialize each value
+	values := make([]map[string]interface{}, 0)
+	for _, unit := range c.units {
+		valueData := map[string]interface{}{
+			"name": unit.Name(),
+			"type": unit.Type().String(),
+			"data": unit.Data(),
+		}
+		values = append(values, valueData)
+	}
+	mpData["values"] = values
+
+	// Marshal to MessagePack
+	return msgpack.Marshal(mpData)
+}
+
+// FromMessagePack deserializes from MessagePack binary format
+func (c *ValueContainer) FromMessagePack(data []byte) error {
+	var mpData map[string]interface{}
+	if err := msgpack.Unmarshal(data, &mpData); err != nil {
+		return err
+	}
+
+	// Extract header fields
+	if val, ok := mpData["source_id"].(string); ok {
+		c.sourceID = val
+	}
+	if val, ok := mpData["source_sub_id"].(string); ok {
+		c.sourceSubID = val
+	}
+	if val, ok := mpData["target_id"].(string); ok {
+		c.targetID = val
+	}
+	if val, ok := mpData["target_sub_id"].(string); ok {
+		c.targetSubID = val
+	}
+	if val, ok := mpData["message_type"].(string); ok {
+		c.messageType = val
+	}
+	if val, ok := mpData["version"].(string); ok {
+		c.version = val
+	}
+
+	// TODO: Deserialize values
+	// This would require a value factory to create values based on type
+
+	return nil
 }
