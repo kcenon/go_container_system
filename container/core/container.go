@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/vmihailenco/msgpack/v5"
 )
@@ -29,6 +30,10 @@ type ValueContainer struct {
 
 	// Values
 	units []Value
+
+	// Thread safety
+	mu         sync.RWMutex
+	threadSafe bool
 }
 
 // NewValueContainer creates a new empty container
@@ -72,20 +77,47 @@ func NewValueContainerFull(sourceID, sourceSubID, targetID, targetSubID, message
 	}
 }
 
+// EnableThreadSafe enables thread-safe mode
+func (c *ValueContainer) EnableThreadSafe() {
+	c.threadSafe = true
+}
+
+// DisableThreadSafe disables thread-safe mode
+func (c *ValueContainer) DisableThreadSafe() {
+	c.threadSafe = false
+}
+
+// IsThreadSafe returns whether thread-safe mode is enabled
+func (c *ValueContainer) IsThreadSafe() bool {
+	return c.threadSafe
+}
+
 // SetSource sets the source ID and sub ID
 func (c *ValueContainer) SetSource(sourceID, sourceSubID string) {
+	if c.threadSafe {
+		c.mu.Lock()
+		defer c.mu.Unlock()
+	}
 	c.sourceID = sourceID
 	c.sourceSubID = sourceSubID
 }
 
 // SetTarget sets the target ID and sub ID
 func (c *ValueContainer) SetTarget(targetID, targetSubID string) {
+	if c.threadSafe {
+		c.mu.Lock()
+		defer c.mu.Unlock()
+	}
 	c.targetID = targetID
 	c.targetSubID = targetSubID
 }
 
 // SetMessageType sets the message type
 func (c *ValueContainer) SetMessageType(messageType string) {
+	if c.threadSafe {
+		c.mu.Lock()
+		defer c.mu.Unlock()
+	}
 	c.messageType = messageType
 }
 
@@ -106,11 +138,19 @@ func (c *ValueContainer) Values() []Value        { return c.units }
 
 // AddValue adds a value to the container
 func (c *ValueContainer) AddValue(value Value) {
+	if c.threadSafe {
+		c.mu.Lock()
+		defer c.mu.Unlock()
+	}
 	c.units = append(c.units, value)
 }
 
 // RemoveValue removes all values with the given name
 func (c *ValueContainer) RemoveValue(name string) {
+	if c.threadSafe {
+		c.mu.Lock()
+		defer c.mu.Unlock()
+	}
 	newUnits := make([]Value, 0)
 	for _, unit := range c.units {
 		if unit.Name() != name {
@@ -122,6 +162,10 @@ func (c *ValueContainer) RemoveValue(name string) {
 
 // GetValue gets the first value with the given name
 func (c *ValueContainer) GetValue(name string, index int) Value {
+	if c.threadSafe {
+		c.mu.RLock()
+		defer c.mu.RUnlock()
+	}
 	count := 0
 	for _, unit := range c.units {
 		if unit.Name() == name {

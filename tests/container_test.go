@@ -2,6 +2,7 @@ package tests
 
 import (
 	"os"
+	"sync"
 	"testing"
 
 	"github.com/kcenon/go_container_system/container/core"
@@ -365,4 +366,124 @@ func TestFileIOOperations(t *testing.T) {
 		}
 		t.Logf("XML file size: %d bytes", fileInfo.Size())
 	})
+}
+
+func TestThreadSafeOperations(t *testing.T) {
+	container := core.NewValueContainerWithType("concurrent_test")
+	container.EnableThreadSafe()
+
+	// Verify thread-safe is enabled
+	if !container.IsThreadSafe() {
+		t.Error("Thread-safe mode should be enabled")
+	}
+
+	// Concurrent writes
+	t.Run("ConcurrentWrites", func(t *testing.T) {
+		var wg sync.WaitGroup
+		numGoroutines := 100
+		numOpsPerGoroutine := 10
+
+		for i := 0; i < numGoroutines; i++ {
+			wg.Add(1)
+			go func(id int) {
+				defer wg.Done()
+				for j := 0; j < numOpsPerGoroutine; j++ {
+					container.AddValue(values.NewInt32Value("concurrent_value", int32(id*numOpsPerGoroutine+j)))
+				}
+			}(i)
+		}
+
+		wg.Wait()
+
+		// Verify all values were added
+		expectedCount := numGoroutines * numOpsPerGoroutine
+		actualCount := len(container.Values())
+		if actualCount != expectedCount {
+			t.Errorf("Expected %d values, got %d", expectedCount, actualCount)
+		}
+		t.Logf("Successfully added %d values concurrently", actualCount)
+	})
+
+	// Concurrent reads and writes
+	t.Run("ConcurrentReadsAndWrites", func(t *testing.T) {
+		testContainer := core.NewValueContainerWithType("rw_test")
+		testContainer.EnableThreadSafe()
+
+		// Pre-populate
+		for i := 0; i < 10; i++ {
+			testContainer.AddValue(values.NewStringValue("data", "value"))
+		}
+
+		var wg sync.WaitGroup
+		numReaders := 50
+		numWriters := 50
+
+		// Readers
+		for i := 0; i < numReaders; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				for j := 0; j < 10; j++ {
+					_ = testContainer.GetValue("data", 0)
+				}
+			}()
+		}
+
+		// Writers
+		for i := 0; i < numWriters; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				for j := 0; j < 10; j++ {
+					testContainer.AddValue(values.NewStringValue("new_data", "test"))
+				}
+			}()
+		}
+
+		wg.Wait()
+		t.Logf("Concurrent reads and writes completed successfully")
+	})
+
+	// Test header operations
+	t.Run("ConcurrentHeaderOperations", func(t *testing.T) {
+		headerContainer := core.NewValueContainerWithType("header_test")
+		headerContainer.EnableThreadSafe()
+
+		var wg sync.WaitGroup
+		numOps := 100
+
+		for i := 0; i < numOps; i++ {
+			wg.Add(1)
+			go func(id int) {
+				defer wg.Done()
+				headerContainer.SetSource("source", "sub")
+				headerContainer.SetTarget("target", "sub")
+				headerContainer.SetMessageType("test")
+			}(i)
+		}
+
+		wg.Wait()
+		t.Logf("Concurrent header operations completed successfully")
+	})
+}
+
+func TestThreadSafeDisable(t *testing.T) {
+	container := core.NewValueContainerWithType("disable_test")
+
+	// Initially disabled
+	if container.IsThreadSafe() {
+		t.Error("Thread-safe mode should be disabled by default")
+	}
+
+	// Enable
+	container.EnableThreadSafe()
+	if !container.IsThreadSafe() {
+		t.Error("Thread-safe mode should be enabled")
+	}
+
+	// Disable
+	container.DisableThreadSafe()
+	if container.IsThreadSafe() {
+		t.Error("Thread-safe mode should be disabled")
+	}
 }
