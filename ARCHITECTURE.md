@@ -1,7 +1,7 @@
 # Architecture Documentation - Go Container System
 
 > **Version:** 0.1.0
-> **Last Updated:** 2025-10-26
+> **Last Updated:** 2025-10-27
 > **Language:** English
 
 ---
@@ -987,6 +987,154 @@ for _, value := range container.Values() {
 }
 if len(errs) > 0 {
     return fmt.Errorf("serialization errors: %v", errs)
+}
+```
+
+---
+
+## New Features and Migration Guide
+
+### Long/ULong Type Addition (v0.1.0 - 2025-10-27)
+
+**NEW FEATURE**: This version adds missing `LongValue` (type 6) and `ULongValue` (type 7) types to achieve complete type coverage and cross-language compatibility.
+
+#### Background
+
+Previous versions only supported `Int64Value` and `UInt64Value`, which map to types 8 and 9. This caused incompatibility with other container systems that use types 6 and 7 for 32-bit long/ulong values. Go now has **complete type coverage (15/15 types)**.
+
+#### What's New
+
+**New Types Added:**
+- **`LongValue`** (type 6): 32-bit signed integer, range [-2³¹, 2³¹-1]
+- **`ULongValue`** (type 7): 32-bit unsigned integer, range [0, 2³²-1]
+
+**Existing Types (unchanged):**
+- `Int64Value` (type 8): Full 64-bit signed integer
+- `UInt64Value` (type 9): Full 64-bit unsigned integer
+
+**Type Mapping:**
+```
+Before: Only had Int64Value/UInt64Value (types 8,9)
+After:  Now has LongValue/ULongValue (types 6,7) + Int64Value/UInt64Value (types 8,9)
+```
+
+#### Usage Guide
+
+**Creating Values:**
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/kcenon/go_container_system/container/values"
+)
+
+func main() {
+    // NEW: 32-bit LongValue (type 6) - returns error if out of range
+    longVal, err := values.NewLongValue("timestamp", 1234567890)
+    if err != nil {
+        // Value exceeds 32-bit range, use Int64Value instead
+        fmt.Println("Error:", err)
+        return
+    }
+    fmt.Println("Long value created:", longVal.Value())
+
+    // NEW: 32-bit ULongValue (type 7) - returns error if out of range
+    ulongVal, err := values.NewULongValue("counter", 4000000000)
+    if err != nil {
+        // Value exceeds 32-bit range, use UInt64Value instead
+        fmt.Println("Error:", err)
+        return
+    }
+    fmt.Println("ULong value created:", ulongVal.Value())
+
+    // Existing: 64-bit Int64Value (type 8) - no range checking
+    int64Val := values.NewInt64Value("large_number", 9_000_000_000_000)
+    fmt.Println("Int64 value created:", int64Val.Value())
+
+    // Existing: 64-bit UInt64Value (type 9) - no range checking
+    uint64Val := values.NewUInt64Value("huge_number", 18_000_000_000_000_000_000)
+    fmt.Println("UInt64 value created:", uint64Val.Value())
+}
+```
+
+**Error Handling:**
+```go
+func SafeCreateLongValue(name string, value int64) (values.Value, error) {
+    // Try 32-bit first
+    lv, err := values.NewLongValue(name, value)
+    if err != nil {
+        // Value too large, fall back to 64-bit
+        return values.NewInt64Value(name, value), nil
+    }
+    return lv, nil
+}
+
+// Usage
+value, err := SafeCreateLongValue("counter", userInput)
+if err != nil {
+    return err
+}
+container.AddValue(value)
+```
+
+#### Type Selection Guide
+
+| Value Range | Type to Use | Returns Error? | Size |
+|-------------|-------------|----------------|------|
+| [-2³¹, 2³¹-1] | `NewLongValue()` | Yes, if out of range | 4 bytes |
+| [0, 2³²-1] | `NewULongValue()` | Yes, if out of range | 4 bytes |
+| Full int64 | `NewInt64Value()` | No | 8 bytes |
+| Full uint64 | `NewUInt64Value()` | No | 8 bytes |
+
+#### Serialization Compatibility
+
+After this addition, Go is now fully compatible with all container systems:
+
+| Language | Type 6 (long) | Type 7 (ulong) | Bytes | Endianness |
+|----------|---------------|----------------|-------|------------|
+| C++      | int32_t       | uint32_t       | 4     | Little |
+| Python   | int32         | uint32         | 4     | Little |
+| .NET     | int           | uint           | 4     | Little |
+| **Go**   | **int32**     | **uint32**     | **4** | **Little** |
+| Rust     | i32           | u32            | 4     | Little |
+
+#### Testing
+
+Comprehensive test suite added in `container/values/long_value_test.go`:
+- 25+ tests covering range validation, serialization, error handling
+- All tests passing
+- Verified cross-language compatibility
+
+#### Type Coverage
+
+**Before**: 13/15 types (missing types 6 and 7)
+- ✅ Types 0-5: Bool, Short, UShort, Int, UInt
+- ❌ Type 6: Long (missing)
+- ❌ Type 7: ULong (missing)
+- ✅ Types 8-14: LLong, ULLong, Float, Double, String, Bytes, Container
+
+**After**: **15/15 types complete** ✅
+- ✅ Types 0-14: All types now supported
+
+#### Migration Notes
+
+**No Breaking Changes**: This is a pure addition. Existing code using `Int64Value` and `UInt64Value` continues to work without modifications.
+
+**When to Use New Types:**
+- Use `LongValue`/`ULongValue` when interfacing with other container systems
+- Use `LongValue`/`ULongValue` when you know values fit in 32-bit range
+- Use `Int64Value`/`UInt64Value` for large values or when you don't want range checking
+
+**Example Migration:**
+```go
+// Old code (still works)
+value := values.NewInt64Value("timestamp", 1234567890)
+
+// New code (more precise, cross-language compatible)
+value, err := values.NewLongValue("timestamp", 1234567890)
+if err != nil {
+    // Handle error
 }
 ```
 
