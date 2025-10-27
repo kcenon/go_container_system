@@ -9,6 +9,7 @@ package values
 
 import (
 	"encoding/binary"
+	"fmt"
 	"math"
 
 	"github.com/kcenon/go_container_system/container/core"
@@ -172,3 +173,82 @@ func NewFloat64Value(name string, value float64) *Float64Value {
 
 func (v *Float64Value) ToFloat64() (float64, error) { return v.value, nil }
 func (v *Float64Value) Value() float64               { return v.value }
+
+// =============================================================================
+// Long/ULong Types (32-bit range policy)
+// =============================================================================
+
+// LongValue represents a 32-bit signed integer (type 6).
+// Policy: Enforces 32-bit range [-2^31, 2^31-1].
+// Values exceeding this range should use Int64Value.
+// Always serializes as 4 bytes (int32) regardless of platform.
+type LongValue struct {
+	*core.BaseValue
+	value int32
+}
+
+const (
+	int32Min = -2147483648
+	int32Max = 2147483647
+)
+
+// NewLongValue creates a new long value with range checking
+func NewLongValue(name string, value int64) (*LongValue, error) {
+	// Enforce strict 32-bit range policy
+	if value < int32Min || value > int32Max {
+		return nil, fmt.Errorf(
+			"LongValue: value %d exceeds 32-bit range [%d, %d]. "+
+				"Use Int64Value for 64-bit values",
+			value, int32Min, int32Max,
+		)
+	}
+
+	val32 := int32(value)
+	data := make([]byte, 4)
+	binary.LittleEndian.PutUint32(data, uint32(val32))
+
+	return &LongValue{
+		BaseValue: core.NewBaseValue(name, core.LongValue, data),
+		value:     val32,
+	}, nil
+}
+
+func (v *LongValue) ToInt32() (int32, error) { return v.value, nil }
+func (v *LongValue) ToInt64() (int64, error) { return int64(v.value), nil }
+func (v *LongValue) Value() int32             { return v.value }
+
+// ULongValue represents a 32-bit unsigned integer (type 7).
+// Policy: Enforces 32-bit range [0, 2^32-1].
+// Values exceeding this range should use UInt64Value.
+// Always serializes as 4 bytes (uint32) regardless of platform.
+type ULongValue struct {
+	*core.BaseValue
+	value uint32
+}
+
+const uint32Max = 4294967295
+
+// NewULongValue creates a new ulong value with range checking
+func NewULongValue(name string, value uint64) (*ULongValue, error) {
+	// Enforce strict 32-bit range policy
+	if value > uint32Max {
+		return nil, fmt.Errorf(
+			"ULongValue: value %d exceeds 32-bit range [0, %d]. "+
+				"Use UInt64Value for 64-bit values",
+			value, uint32Max,
+		)
+	}
+
+	val32 := uint32(value)
+	data := make([]byte, 4)
+	binary.LittleEndian.PutUint32(data, val32)
+
+	return &ULongValue{
+		BaseValue: core.NewBaseValue(name, core.ULongValue, data),
+		value:     val32,
+	}, nil
+}
+
+func (v *ULongValue) ToUInt32() (uint32, error) { return v.value, nil }
+func (v *ULongValue) ToUInt64() (uint64, error) { return uint64(v.value), nil }
+func (v *ULongValue) Value() uint32              { return v.value }
