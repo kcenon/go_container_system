@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
+	"math"
 
 	"github.com/kcenon/go_container_system/container/core"
 )
@@ -352,9 +353,89 @@ func deserializeValue(data []byte) (core.Value, int, error) {
 	// Read type ID
 	typeID := core.ValueType(data[0])
 
-	// TODO: Implement full factory pattern with all value types
-	// For now, this is a minimal implementation to demonstrate the structure
+	// Full factory pattern supporting all primitive value types
 	switch typeID {
+	case core.BoolValue:
+		// Deserialize BoolValue (type 1)
+		// Format: [type:1][name_len:4][name][value_size:4][value:1]
+		if len(data) < 10 { // Minimum: type(1) + name_len(4) + value_size(4) + value(1)
+			return nil, 0, fmt.Errorf("Insufficient data for BoolValue")
+		}
+
+		offset := 1
+		nameLen := uint32(data[offset]) | (uint32(data[offset+1]) << 8) | (uint32(data[offset+2]) << 16) | (uint32(data[offset+3]) << 24)
+		offset += 4
+
+		if offset+int(nameLen)+4+1 > len(data) {
+			return nil, 0, fmt.Errorf("Data too short for BoolValue")
+		}
+
+		name := string(data[offset : offset+int(nameLen)])
+		offset += int(nameLen)
+
+		// Skip value_size (4 bytes)
+		offset += 4
+
+		// Read bool value (1 byte)
+		value := data[offset] != 0
+		offset += 1
+
+		return NewBoolValue(name, value), offset, nil
+
+	case core.ShortValue:
+		// Deserialize Int16Value (type 2)
+		// Format: [type:1][name_len:4][name][value_size:4][value:2]
+		if len(data) < 11 {
+			return nil, 0, fmt.Errorf("Insufficient data for Int16Value")
+		}
+
+		offset := 1
+		nameLen := uint32(data[offset]) | (uint32(data[offset+1]) << 8) | (uint32(data[offset+2]) << 16) | (uint32(data[offset+3]) << 24)
+		offset += 4
+
+		if offset+int(nameLen)+4+2 > len(data) {
+			return nil, 0, fmt.Errorf("Data too short for Int16Value")
+		}
+
+		name := string(data[offset : offset+int(nameLen)])
+		offset += int(nameLen)
+
+		// Skip value_size (4 bytes)
+		offset += 4
+
+		// Read int16 value (2 bytes, little-endian)
+		value := int16(data[offset]) | (int16(data[offset+1]) << 8)
+		offset += 2
+
+		return NewInt16Value(name, value), offset, nil
+
+	case core.UShortValue:
+		// Deserialize UInt16Value (type 3)
+		// Format: [type:1][name_len:4][name][value_size:4][value:2]
+		if len(data) < 11 {
+			return nil, 0, fmt.Errorf("Insufficient data for UInt16Value")
+		}
+
+		offset := 1
+		nameLen := uint32(data[offset]) | (uint32(data[offset+1]) << 8) | (uint32(data[offset+2]) << 16) | (uint32(data[offset+3]) << 24)
+		offset += 4
+
+		if offset+int(nameLen)+4+2 > len(data) {
+			return nil, 0, fmt.Errorf("Data too short for UInt16Value")
+		}
+
+		name := string(data[offset : offset+int(nameLen)])
+		offset += int(nameLen)
+
+		// Skip value_size (4 bytes)
+		offset += 4
+
+		// Read uint16 value (2 bytes, little-endian)
+		value := uint16(data[offset]) | (uint16(data[offset+1]) << 8)
+		offset += 2
+
+		return NewUInt16Value(name, value), offset, nil
+
 	case core.IntValue:
 		// Deserialize IntValue (type 3)
 		// Format: [type:1][name_len:4][name][value_size:4][value:4]
@@ -377,6 +458,133 @@ func deserializeValue(data []byte) (core.Value, int, error) {
 		offset += 4
 
 		return NewInt32Value(name, value), offset, nil
+
+	case core.UIntValue:
+		// Deserialize UInt32Value (type 5)
+		if len(data) < 13 {
+			return nil, 0, fmt.Errorf("Insufficient data for UInt32Value")
+		}
+
+		offset := 1
+		nameLen := uint32(data[offset]) | (uint32(data[offset+1]) << 8) | (uint32(data[offset+2]) << 16) | (uint32(data[offset+3]) << 24)
+		offset += 4
+
+		name := string(data[offset : offset+int(nameLen)])
+		offset += int(nameLen)
+
+		offset += 4 // Skip value_size
+
+		value := uint32(data[offset]) | (uint32(data[offset+1]) << 8) | (uint32(data[offset+2]) << 16) | (uint32(data[offset+3]) << 24)
+		offset += 4
+
+		return NewUInt32Value(name, value), offset, nil
+
+	case core.LLongValue:
+		// Deserialize Int64Value (type 8)
+		if len(data) < 17 {
+			return nil, 0, fmt.Errorf("Insufficient data for Int64Value")
+		}
+
+		offset := 1
+		nameLen := uint32(data[offset]) | (uint32(data[offset+1]) << 8) | (uint32(data[offset+2]) << 16) | (uint32(data[offset+3]) << 24)
+		offset += 4
+
+		name := string(data[offset : offset+int(nameLen)])
+		offset += int(nameLen)
+
+		offset += 4 // Skip value_size
+
+		value := int64(data[offset]) | (int64(data[offset+1]) << 8) | (int64(data[offset+2]) << 16) | (int64(data[offset+3]) << 24) |
+			(int64(data[offset+4]) << 32) | (int64(data[offset+5]) << 40) | (int64(data[offset+6]) << 48) | (int64(data[offset+7]) << 56)
+		offset += 8
+
+		return NewInt64Value(name, value), offset, nil
+
+	case core.ULLongValue:
+		// Deserialize UInt64Value (type 9)
+		if len(data) < 17 {
+			return nil, 0, fmt.Errorf("Insufficient data for UInt64Value")
+		}
+
+		offset := 1
+		nameLen := uint32(data[offset]) | (uint32(data[offset+1]) << 8) | (uint32(data[offset+2]) << 16) | (uint32(data[offset+3]) << 24)
+		offset += 4
+
+		name := string(data[offset : offset+int(nameLen)])
+		offset += int(nameLen)
+
+		offset += 4 // Skip value_size
+
+		value := uint64(data[offset]) | (uint64(data[offset+1]) << 8) | (uint64(data[offset+2]) << 16) | (uint64(data[offset+3]) << 24) |
+			(uint64(data[offset+4]) << 32) | (uint64(data[offset+5]) << 40) | (uint64(data[offset+6]) << 48) | (uint64(data[offset+7]) << 56)
+		offset += 8
+
+		return NewUInt64Value(name, value), offset, nil
+
+	case core.FloatValue:
+		// Deserialize Float32Value (type 10)
+		if len(data) < 13 {
+			return nil, 0, fmt.Errorf("Insufficient data for Float32Value")
+		}
+
+		offset := 1
+		nameLen := uint32(data[offset]) | (uint32(data[offset+1]) << 8) | (uint32(data[offset+2]) << 16) | (uint32(data[offset+3]) << 24)
+		offset += 4
+
+		name := string(data[offset : offset+int(nameLen)])
+		offset += int(nameLen)
+
+		offset += 4 // Skip value_size
+
+		bits := uint32(data[offset]) | (uint32(data[offset+1]) << 8) | (uint32(data[offset+2]) << 16) | (uint32(data[offset+3]) << 24)
+		value := math.Float32frombits(bits)
+		offset += 4
+
+		return NewFloat32Value(name, value), offset, nil
+
+	case core.DoubleValue:
+		// Deserialize Float64Value (type 11)
+		if len(data) < 17 {
+			return nil, 0, fmt.Errorf("Insufficient data for Float64Value")
+		}
+
+		offset := 1
+		nameLen := uint32(data[offset]) | (uint32(data[offset+1]) << 8) | (uint32(data[offset+2]) << 16) | (uint32(data[offset+3]) << 24)
+		offset += 4
+
+		name := string(data[offset : offset+int(nameLen)])
+		offset += int(nameLen)
+
+		offset += 4 // Skip value_size
+
+		bits := uint64(data[offset]) | (uint64(data[offset+1]) << 8) | (uint64(data[offset+2]) << 16) | (uint64(data[offset+3]) << 24) |
+			(uint64(data[offset+4]) << 32) | (uint64(data[offset+5]) << 40) | (uint64(data[offset+6]) << 48) | (uint64(data[offset+7]) << 56)
+		value := math.Float64frombits(bits)
+		offset += 8
+
+		return NewFloat64Value(name, value), offset, nil
+
+	case core.BytesValue:
+		// Deserialize BytesValue (type 12)
+		if len(data) < 13 {
+			return nil, 0, fmt.Errorf("Insufficient data for BytesValue")
+		}
+
+		offset := 1
+		nameLen := uint32(data[offset]) | (uint32(data[offset+1]) << 8) | (uint32(data[offset+2]) << 16) | (uint32(data[offset+3]) << 24)
+		offset += 4
+
+		name := string(data[offset : offset+int(nameLen)])
+		offset += int(nameLen)
+
+		valueSize := uint32(data[offset]) | (uint32(data[offset+1]) << 8) | (uint32(data[offset+2]) << 16) | (uint32(data[offset+3]) << 24)
+		offset += 4
+
+		value := make([]byte, valueSize)
+		copy(value, data[offset:offset+int(valueSize)])
+		offset += int(valueSize)
+
+		return NewBytesValue(name, value), offset, nil
 
 	case core.StringValue:
 		// Deserialize StringValue (type 12)
