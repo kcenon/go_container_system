@@ -73,3 +73,47 @@ func (v *BoolValue) ToString() (string, error) {
 func (v *BoolValue) Value() bool {
 	return v.value
 }
+
+// ToBytes implements complete binary format with header
+// Format: [type:1][name_len:4][name][value_size:4][value:1]
+func (v *BoolValue) ToBytes() ([]byte, error) {
+	name := v.Name()
+	nameBytes := []byte(name)
+	nameLen := uint32(len(nameBytes))
+	valueSize := uint32(1) // bool = 1 byte
+
+	// Total: type(1) + name_len(4) + name + value_size(4) + value(1)
+	totalSize := 1 + 4 + len(nameBytes) + 4 + 1
+	result := make([]byte, 0, totalSize)
+
+	// Type (1 byte)
+	result = append(result, byte(core.BoolValue))
+
+	// Name length (4 bytes, little-endian)
+	result = append(result,
+		byte(nameLen&0xFF),
+		byte((nameLen>>8)&0xFF),
+		byte((nameLen>>16)&0xFF),
+		byte((nameLen>>24)&0xFF),
+	)
+
+	// Name
+	result = append(result, nameBytes...)
+
+	// Value size (4 bytes, little-endian)
+	result = append(result,
+		byte(valueSize&0xFF),
+		byte((valueSize>>8)&0xFF),
+		byte((valueSize>>16)&0xFF),
+		byte((valueSize>>24)&0xFF),
+	)
+
+	// Value (1 byte: 0=false, 1=true)
+	if v.value {
+		result = append(result, 1)
+	} else {
+		result = append(result, 0)
+	}
+
+	return result, nil
+}

@@ -30,11 +30,43 @@ func NewBytesValue(name string, value []byte) *BytesValue {
 	}
 }
 
-// ToBytes returns the byte value
+// ToBytes implements complete binary format with header
+// Format: [type:1][name_len:4][name][value_size:4][bytes]
 func (v *BytesValue) ToBytes() ([]byte, error) {
-	// Return a copy to prevent external modification
-	result := make([]byte, len(v.value))
-	copy(result, v.value)
+	name := v.Name()
+	nameBytes := []byte(name)
+	nameLen := uint32(len(nameBytes))
+	valueSize := uint32(len(v.value))
+
+	// Total: type(1) + name_len(4) + name + value_size(4) + value
+	totalSize := 1 + 4 + len(nameBytes) + 4 + len(v.value)
+	result := make([]byte, 0, totalSize)
+
+	// Type (1 byte)
+	result = append(result, byte(core.BytesValue))
+
+	// Name length (4 bytes, little-endian)
+	result = append(result,
+		byte(nameLen&0xFF),
+		byte((nameLen>>8)&0xFF),
+		byte((nameLen>>16)&0xFF),
+		byte((nameLen>>24)&0xFF),
+	)
+
+	// Name
+	result = append(result, nameBytes...)
+
+	// Value size (4 bytes, little-endian)
+	result = append(result,
+		byte(valueSize&0xFF),
+		byte((valueSize>>8)&0xFF),
+		byte((valueSize>>16)&0xFF),
+		byte((valueSize>>24)&0xFF),
+	)
+
+	// Raw bytes
+	result = append(result, v.value...)
+
 	return result, nil
 }
 

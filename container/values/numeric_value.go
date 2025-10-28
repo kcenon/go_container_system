@@ -354,6 +354,49 @@ func NewUInt64Value(name string, value uint64) *UInt64Value {
 func (v *UInt64Value) ToUInt64() (uint64, error) { return v.value, nil }
 func (v *UInt64Value) Value() uint64              { return v.value }
 
+// ToBytes implements complete binary format with header
+// Format: [type:1][name_len:4][name][value_size:4][value:8]
+func (v *UInt64Value) ToBytes() ([]byte, error) {
+	name := v.Name()
+	nameBytes := []byte(name)
+	nameLen := uint32(len(nameBytes))
+	valueSize := uint32(8) // uint64 = 8 bytes
+
+	totalSize := 1 + 4 + len(nameBytes) + 4 + 8
+	result := make([]byte, 0, totalSize)
+
+	result = append(result, byte(core.ULLongValue))
+
+	result = append(result,
+		byte(nameLen&0xFF),
+		byte((nameLen>>8)&0xFF),
+		byte((nameLen>>16)&0xFF),
+		byte((nameLen>>24)&0xFF),
+	)
+
+	result = append(result, nameBytes...)
+
+	result = append(result,
+		byte(valueSize&0xFF),
+		byte((valueSize>>8)&0xFF),
+		byte((valueSize>>16)&0xFF),
+		byte((valueSize>>24)&0xFF),
+	)
+
+	result = append(result,
+		byte(v.value&0xFF),
+		byte((v.value>>8)&0xFF),
+		byte((v.value>>16)&0xFF),
+		byte((v.value>>24)&0xFF),
+		byte((v.value>>32)&0xFF),
+		byte((v.value>>40)&0xFF),
+		byte((v.value>>48)&0xFF),
+		byte((v.value>>56)&0xFF),
+	)
+
+	return result, nil
+}
+
 // Float32Value represents a 32-bit floating point
 type Float32Value struct {
 	*core.BaseValue
@@ -374,6 +417,47 @@ func (v *Float32Value) ToFloat32() (float32, error) { return v.value, nil }
 func (v *Float32Value) ToFloat64() (float64, error) { return float64(v.value), nil }
 func (v *Float32Value) Value() float32               { return v.value }
 
+// ToBytes implements complete binary format with header
+// Format: [type:1][name_len:4][name][value_size:4][value:4]
+func (v *Float32Value) ToBytes() ([]byte, error) {
+	name := v.Name()
+	nameBytes := []byte(name)
+	nameLen := uint32(len(nameBytes))
+	valueSize := uint32(4) // float32 = 4 bytes
+
+	totalSize := 1 + 4 + len(nameBytes) + 4 + 4
+	result := make([]byte, 0, totalSize)
+
+	result = append(result, byte(core.FloatValue))
+
+	result = append(result,
+		byte(nameLen&0xFF),
+		byte((nameLen>>8)&0xFF),
+		byte((nameLen>>16)&0xFF),
+		byte((nameLen>>24)&0xFF),
+	)
+
+	result = append(result, nameBytes...)
+
+	result = append(result,
+		byte(valueSize&0xFF),
+		byte((valueSize>>8)&0xFF),
+		byte((valueSize>>16)&0xFF),
+		byte((valueSize>>24)&0xFF),
+	)
+
+	// Convert float32 to uint32 bits and serialize
+	bits := math.Float32bits(v.value)
+	result = append(result,
+		byte(bits&0xFF),
+		byte((bits>>8)&0xFF),
+		byte((bits>>16)&0xFF),
+		byte((bits>>24)&0xFF),
+	)
+
+	return result, nil
+}
+
 // Float64Value represents a 64-bit floating point
 type Float64Value struct {
 	*core.BaseValue
@@ -392,6 +476,51 @@ func NewFloat64Value(name string, value float64) *Float64Value {
 
 func (v *Float64Value) ToFloat64() (float64, error) { return v.value, nil }
 func (v *Float64Value) Value() float64               { return v.value }
+
+// ToBytes implements complete binary format with header
+// Format: [type:1][name_len:4][name][value_size:4][value:8]
+func (v *Float64Value) ToBytes() ([]byte, error) {
+	name := v.Name()
+	nameBytes := []byte(name)
+	nameLen := uint32(len(nameBytes))
+	valueSize := uint32(8) // float64 = 8 bytes
+
+	totalSize := 1 + 4 + len(nameBytes) + 4 + 8
+	result := make([]byte, 0, totalSize)
+
+	result = append(result, byte(core.DoubleValue))
+
+	result = append(result,
+		byte(nameLen&0xFF),
+		byte((nameLen>>8)&0xFF),
+		byte((nameLen>>16)&0xFF),
+		byte((nameLen>>24)&0xFF),
+	)
+
+	result = append(result, nameBytes...)
+
+	result = append(result,
+		byte(valueSize&0xFF),
+		byte((valueSize>>8)&0xFF),
+		byte((valueSize>>16)&0xFF),
+		byte((valueSize>>24)&0xFF),
+	)
+
+	// Convert float64 to uint64 bits and serialize
+	bits := math.Float64bits(v.value)
+	result = append(result,
+		byte(bits&0xFF),
+		byte((bits>>8)&0xFF),
+		byte((bits>>16)&0xFF),
+		byte((bits>>24)&0xFF),
+		byte((bits>>32)&0xFF),
+		byte((bits>>40)&0xFF),
+		byte((bits>>48)&0xFF),
+		byte((bits>>56)&0xFF),
+	)
+
+	return result, nil
+}
 
 // =============================================================================
 // Long/ULong Types (32-bit range policy)
