@@ -178,6 +178,13 @@ func serializeValueCpp(value core.Value) (string, error) {
 	case core.ContainerValue:
 		// For containers, store child count (matching C++ behavior)
 		dataStr = "0" // Placeholder - full support requires nested container work
+	case core.ArrayValue:
+		// For arrays, store element count (matching C++ behavior)
+		if arrayVal, ok := value.(*values.ArrayValue); ok {
+			dataStr = fmt.Sprintf("%d", arrayVal.Count())
+		} else {
+			dataStr = "0"
+		}
 	case core.NullValue:
 		dataStr = ""
 	default:
@@ -218,6 +225,8 @@ func valueTypeToCppName(vt core.ValueType) string {
 		return "bytes_value"
 	case core.ContainerValue:
 		return "container_value"
+	case core.ArrayValue:
+		return "array_value"
 	case core.NullValue:
 		return "null_value"
 	default:
@@ -256,6 +265,8 @@ func cppNameToValueType(name string) (core.ValueType, error) {
 		return core.BytesValue, nil
 	case "container_value":
 		return core.ContainerValue, nil
+	case "array_value":
+		return core.ArrayValue, nil
 	case "null_value":
 		return core.NullValue, nil
 	default:
@@ -426,9 +437,19 @@ func DeserializeCppWire(wireData string) (*core.ValueContainer, error) {
 				}
 				parsedValue = values.NewBytesValue(name, bytes)
 
-			case core.ContainerValue, core.NullValue:
-				// TODO: Implement nested container support
-				continue
+			case core.ContainerValue, core.ArrayValue, core.NullValue:
+				// TODO: Implement nested container/array support
+				// For now, create empty container/array with element count
+				count, _ := strconv.Atoi(dataStr)
+				if valueType == core.ArrayValue {
+					// Create empty ArrayValue with reserved capacity
+					parsedValue = values.NewArrayValue(name)
+					// Note: Cannot pre-populate elements without nested deserialization
+					_ = count // Use count when nested support is implemented
+				} else {
+					// Skip ContainerValue and NullValue for now
+					continue
+				}
 
 			default:
 				continue
