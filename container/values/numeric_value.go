@@ -36,6 +36,49 @@ func (v *Int16Value) ToInt32() (int32, error) { return int32(v.value), nil }
 func (v *Int16Value) ToInt64() (int64, error) { return int64(v.value), nil }
 func (v *Int16Value) Value() int16             { return v.value }
 
+// ToBytes implements complete binary format with header
+// Format: [type:1][name_len:4][name][value_size:4][value:2]
+func (v *Int16Value) ToBytes() ([]byte, error) {
+	name := v.Name()
+	nameBytes := []byte(name)
+	nameLen := uint32(len(nameBytes))
+	valueSize := uint32(2) // int16 = 2 bytes
+
+	// Total: type(1) + name_len(4) + name + value_size(4) + value(2)
+	totalSize := 1 + 4 + len(nameBytes) + 4 + 2
+	result := make([]byte, 0, totalSize)
+
+	// Type (1 byte)
+	result = append(result, byte(core.ShortValue))
+
+	// Name length (4 bytes, little-endian)
+	result = append(result,
+		byte(nameLen&0xFF),
+		byte((nameLen>>8)&0xFF),
+		byte((nameLen>>16)&0xFF),
+		byte((nameLen>>24)&0xFF),
+	)
+
+	// Name
+	result = append(result, nameBytes...)
+
+	// Value size (4 bytes, little-endian)
+	result = append(result,
+		byte(valueSize&0xFF),
+		byte((valueSize>>8)&0xFF),
+		byte((valueSize>>16)&0xFF),
+		byte((valueSize>>24)&0xFF),
+	)
+
+	// Value (2 bytes, little-endian)
+	result = append(result,
+		byte(v.value&0xFF),
+		byte((v.value>>8)&0xFF),
+	)
+
+	return result, nil
+}
+
 // UInt16Value represents a 16-bit unsigned integer
 type UInt16Value struct {
 	*core.BaseValue
@@ -56,6 +99,49 @@ func (v *UInt16Value) ToUInt16() (uint16, error) { return v.value, nil }
 func (v *UInt16Value) ToUInt32() (uint32, error) { return uint32(v.value), nil }
 func (v *UInt16Value) ToUInt64() (uint64, error) { return uint64(v.value), nil }
 func (v *UInt16Value) Value() uint16              { return v.value }
+
+// ToBytes implements complete binary format with header
+// Format: [type:1][name_len:4][name][value_size:4][value:2]
+func (v *UInt16Value) ToBytes() ([]byte, error) {
+	name := v.Name()
+	nameBytes := []byte(name)
+	nameLen := uint32(len(nameBytes))
+	valueSize := uint32(2) // uint16 = 2 bytes
+
+	// Total: type(1) + name_len(4) + name + value_size(4) + value(2)
+	totalSize := 1 + 4 + len(nameBytes) + 4 + 2
+	result := make([]byte, 0, totalSize)
+
+	// Type (1 byte)
+	result = append(result, byte(core.UShortValue))
+
+	// Name length (4 bytes, little-endian)
+	result = append(result,
+		byte(nameLen&0xFF),
+		byte((nameLen>>8)&0xFF),
+		byte((nameLen>>16)&0xFF),
+		byte((nameLen>>24)&0xFF),
+	)
+
+	// Name
+	result = append(result, nameBytes...)
+
+	// Value size (4 bytes, little-endian)
+	result = append(result,
+		byte(valueSize&0xFF),
+		byte((valueSize>>8)&0xFF),
+		byte((valueSize>>16)&0xFF),
+		byte((valueSize>>24)&0xFF),
+	)
+
+	// Value (2 bytes, little-endian)
+	result = append(result,
+		byte(v.value&0xFF),
+		byte((v.value>>8)&0xFF),
+	)
+
+	return result, nil
+}
 
 // Int32Value represents a 32-bit signed integer
 type Int32Value struct {
@@ -141,6 +227,45 @@ func NewUInt32Value(name string, value uint32) *UInt32Value {
 func (v *UInt32Value) ToUInt32() (uint32, error) { return v.value, nil }
 func (v *UInt32Value) ToUInt64() (uint64, error) { return uint64(v.value), nil }
 func (v *UInt32Value) Value() uint32              { return v.value }
+
+// ToBytes implements complete binary format with header
+// Format: [type:1][name_len:4][name][value_size:4][value:4]
+func (v *UInt32Value) ToBytes() ([]byte, error) {
+	name := v.Name()
+	nameBytes := []byte(name)
+	nameLen := uint32(len(nameBytes))
+	valueSize := uint32(4) // uint32 = 4 bytes
+
+	totalSize := 1 + 4 + len(nameBytes) + 4 + 4
+	result := make([]byte, 0, totalSize)
+
+	result = append(result, byte(core.UIntValue))
+
+	result = append(result,
+		byte(nameLen&0xFF),
+		byte((nameLen>>8)&0xFF),
+		byte((nameLen>>16)&0xFF),
+		byte((nameLen>>24)&0xFF),
+	)
+
+	result = append(result, nameBytes...)
+
+	result = append(result,
+		byte(valueSize&0xFF),
+		byte((valueSize>>8)&0xFF),
+		byte((valueSize>>16)&0xFF),
+		byte((valueSize>>24)&0xFF),
+	)
+
+	result = append(result,
+		byte(v.value&0xFF),
+		byte((v.value>>8)&0xFF),
+		byte((v.value>>16)&0xFF),
+		byte((v.value>>24)&0xFF),
+	)
+
+	return result, nil
+}
 
 // Int64Value represents a 64-bit signed integer
 type Int64Value struct {
