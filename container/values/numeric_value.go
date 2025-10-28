@@ -77,6 +77,51 @@ func (v *Int32Value) ToInt32() (int32, error) { return v.value, nil }
 func (v *Int32Value) ToInt64() (int64, error) { return int64(v.value), nil }
 func (v *Int32Value) Value() int32             { return v.value }
 
+// ToBytes implements complete binary format with header
+// Format: [type:1][name_len:4][name][value_size:4][value:4]
+func (v *Int32Value) ToBytes() ([]byte, error) {
+	name := v.Name()
+	nameBytes := []byte(name)
+	nameLen := uint32(len(nameBytes))
+	valueSize := uint32(4) // int32 = 4 bytes
+
+	// Total: type(1) + name_len(4) + name + value_size(4) + value(4)
+	totalSize := 1 + 4 + len(nameBytes) + 4 + 4
+	result := make([]byte, 0, totalSize)
+
+	// Type (1 byte)
+	result = append(result, byte(core.IntValue))
+
+	// Name length (4 bytes, little-endian)
+	result = append(result,
+		byte(nameLen&0xFF),
+		byte((nameLen>>8)&0xFF),
+		byte((nameLen>>16)&0xFF),
+		byte((nameLen>>24)&0xFF),
+	)
+
+	// Name
+	result = append(result, nameBytes...)
+
+	// Value size (4 bytes, little-endian)
+	result = append(result,
+		byte(valueSize&0xFF),
+		byte((valueSize>>8)&0xFF),
+		byte((valueSize>>16)&0xFF),
+		byte((valueSize>>24)&0xFF),
+	)
+
+	// Value (4 bytes, little-endian)
+	result = append(result,
+		byte(v.value&0xFF),
+		byte((v.value>>8)&0xFF),
+		byte((v.value>>16)&0xFF),
+		byte((v.value>>24)&0xFF),
+	)
+
+	return result, nil
+}
+
 // UInt32Value represents a 32-bit unsigned integer
 type UInt32Value struct {
 	*core.BaseValue
@@ -115,6 +160,55 @@ func NewInt64Value(name string, value int64) *Int64Value {
 
 func (v *Int64Value) ToInt64() (int64, error) { return v.value, nil }
 func (v *Int64Value) Value() int64             { return v.value }
+
+// ToBytes implements complete binary format with header
+// Format: [type:1][name_len:4][name][value_size:4][value:8]
+func (v *Int64Value) ToBytes() ([]byte, error) {
+	name := v.Name()
+	nameBytes := []byte(name)
+	nameLen := uint32(len(nameBytes))
+	valueSize := uint32(8) // int64 = 8 bytes
+
+	// Total: type(1) + name_len(4) + name + value_size(4) + value(8)
+	totalSize := 1 + 4 + len(nameBytes) + 4 + 8
+	result := make([]byte, 0, totalSize)
+
+	// Type (1 byte) - using LLongValue
+	result = append(result, byte(core.LLongValue))
+
+	// Name length (4 bytes, little-endian)
+	result = append(result,
+		byte(nameLen&0xFF),
+		byte((nameLen>>8)&0xFF),
+		byte((nameLen>>16)&0xFF),
+		byte((nameLen>>24)&0xFF),
+	)
+
+	// Name
+	result = append(result, nameBytes...)
+
+	// Value size (4 bytes, little-endian)
+	result = append(result,
+		byte(valueSize&0xFF),
+		byte((valueSize>>8)&0xFF),
+		byte((valueSize>>16)&0xFF),
+		byte((valueSize>>24)&0xFF),
+	)
+
+	// Value (8 bytes, little-endian)
+	result = append(result,
+		byte(v.value&0xFF),
+		byte((v.value>>8)&0xFF),
+		byte((v.value>>16)&0xFF),
+		byte((v.value>>24)&0xFF),
+		byte((v.value>>32)&0xFF),
+		byte((v.value>>40)&0xFF),
+		byte((v.value>>48)&0xFF),
+		byte((v.value>>56)&0xFF),
+	)
+
+	return result, nil
+}
 
 // UInt64Value represents a 64-bit unsigned integer
 type UInt64Value struct {

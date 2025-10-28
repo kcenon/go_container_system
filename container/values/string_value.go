@@ -30,9 +30,46 @@ func (v *StringValue) ToString() (string, error) {
 	return v.value, nil
 }
 
-// ToBytes returns the byte representation
+// ToBytes implements complete binary format with header
+// Format: [type:1][name_len:4][name][value_size:4][string_bytes]
 func (v *StringValue) ToBytes() ([]byte, error) {
-	return []byte(v.value), nil
+	name := v.Name()
+	nameBytes := []byte(name)
+	nameLen := uint32(len(nameBytes))
+
+	valueBytes := []byte(v.value)
+	valueSize := uint32(len(valueBytes))
+
+	// Total: type(1) + name_len(4) + name + value_size(4) + value
+	totalSize := 1 + 4 + len(nameBytes) + 4 + len(valueBytes)
+	result := make([]byte, 0, totalSize)
+
+	// Type (1 byte)
+	result = append(result, byte(core.StringValue))
+
+	// Name length (4 bytes, little-endian)
+	result = append(result,
+		byte(nameLen&0xFF),
+		byte((nameLen>>8)&0xFF),
+		byte((nameLen>>16)&0xFF),
+		byte((nameLen>>24)&0xFF),
+	)
+
+	// Name
+	result = append(result, nameBytes...)
+
+	// Value size (4 bytes, little-endian)
+	result = append(result,
+		byte(valueSize&0xFF),
+		byte((valueSize>>8)&0xFF),
+		byte((valueSize>>16)&0xFF),
+		byte((valueSize>>24)&0xFF),
+	)
+
+	// String bytes (UTF-8)
+	result = append(result, valueBytes...)
+
+	return result, nil
 }
 
 // Value returns the underlying string value
