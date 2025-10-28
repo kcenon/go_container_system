@@ -51,6 +51,7 @@ const (
 	BytesValue
 	StringValue
 	ContainerValue
+	ArrayValue
 )
 
 // String returns the string representation of the value type
@@ -86,6 +87,8 @@ func (vt ValueType) String() string {
 		return "13"
 	case ContainerValue:
 		return "14"
+	case ArrayValue:
+		return "15"
 	default:
 		return "0"
 	}
@@ -124,6 +127,8 @@ func ParseValueType(s string) ValueType {
 		return StringValue
 	case "14":
 		return ContainerValue
+	case "15":
+		return ArrayValue
 	default:
 		return NullValue
 	}
@@ -162,6 +167,8 @@ func (vt ValueType) TypeName() string {
 		return "string"
 	case ContainerValue:
 		return "container"
+	case ArrayValue:
+		return "array"
 	default:
 		return "unknown"
 	}
