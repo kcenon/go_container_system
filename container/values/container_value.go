@@ -75,15 +75,21 @@ func (v *ContainerValue) RemoveChild(name string) error {
 	return nil
 }
 
-// Serialize serializes the container and all its children
+// Serialize serializes the container and all its children to C++ compatible format.
+//
+// Format: [name,type_code,child_count];[child1][child2]...
+// This matches the Python/C++ wire protocol format for cross-language compatibility.
 func (v *ContainerValue) Serialize() (string, error) {
-	result := fmt.Sprintf("%s|%s|%d", v.Name(), v.Type().String(), len(v.children))
+	// Container header with child count (type 14 = container_value)
+	result := fmt.Sprintf("[%s,%s,%d];", v.Name(), v.Type().String(), len(v.children))
+
+	// Append all child serializations (recursive)
 	for _, child := range v.children {
 		childSer, err := child.Serialize()
 		if err != nil {
 			return "", err
 		}
-		result += "|" + childSer
+		result += childSer
 	}
 	return result, nil
 }
