@@ -565,7 +565,7 @@ func deserializeValue(data []byte) (core.Value, int, error) {
 		return NewFloat64Value(name, value), offset, nil
 
 	case core.BytesValue:
-		// Deserialize BytesValue (type 12)
+		// Deserialize BytesValue (type 13) - matches C++ bytes_value position
 		if len(data) < 13 {
 			return nil, 0, fmt.Errorf("Insufficient data for BytesValue")
 		}
@@ -587,7 +587,7 @@ func deserializeValue(data []byte) (core.Value, int, error) {
 		return NewBytesValue(name, value), offset, nil
 
 	case core.StringValue:
-		// Deserialize StringValue (type 12)
+		// Deserialize StringValue (type 12) - matches C++ string_value position
 		// Format: [type:1][name_len:4][name][value_size:4][string_bytes]
 		if len(data) < 13 {
 			return nil, 0, fmt.Errorf("Insufficient data for StringValue")

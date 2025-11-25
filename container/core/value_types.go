@@ -35,26 +35,30 @@ package core
 // ValueType represents the type of value stored in the container
 type ValueType int
 
+// ValueType constants matching C++ value_types enum exactly.
+// IMPORTANT: The order of StringValue (12) and BytesValue (13) must match
+// the C++/Python/.NET implementations for cross-language compatibility.
 const (
-	NullValue ValueType = iota
-	BoolValue
-	ShortValue
-	UShortValue
-	IntValue
-	UIntValue
-	LongValue
-	ULongValue
-	LLongValue
-	ULLongValue
-	FloatValue
-	DoubleValue
-	BytesValue
-	StringValue
-	ContainerValue
-	ArrayValue
+	NullValue      ValueType = 0  // null_value
+	BoolValue      ValueType = 1  // bool_value
+	ShortValue     ValueType = 2  // short_value (int16)
+	UShortValue    ValueType = 3  // ushort_value (uint16)
+	IntValue       ValueType = 4  // int_value (int32)
+	UIntValue      ValueType = 5  // uint_value (uint32)
+	LongValue      ValueType = 6  // long_value (int64)
+	ULongValue     ValueType = 7  // ulong_value (uint64)
+	LLongValue     ValueType = 8  // llong_value (int64)
+	ULLongValue    ValueType = 9  // ullong_value (uint64)
+	FloatValue     ValueType = 10 // float_value (float32)
+	DoubleValue    ValueType = 11 // double_value (float64)
+	StringValue    ValueType = 12 // string_value - matches C++ std::string position
+	BytesValue     ValueType = 13 // bytes_value - matches C++ std::vector<uint8_t> position
+	ContainerValue ValueType = 14 // container_value (nested container)
+	ArrayValue     ValueType = 15 // array_value (heterogeneous array)
 )
 
-// String returns the string representation of the value type
+// String returns the string representation of the value type (numeric ID).
+// These IDs match C++/Python/.NET implementations for cross-language compatibility.
 func (vt ValueType) String() string {
 	switch vt {
 	case NullValue:
@@ -81,10 +85,10 @@ func (vt ValueType) String() string {
 		return "10"
 	case DoubleValue:
 		return "11"
-	case BytesValue:
-		return "12"
 	case StringValue:
-		return "13"
+		return "12" // Matches C++ string_value position
+	case BytesValue:
+		return "13" // Matches C++ bytes_value position
 	case ContainerValue:
 		return "14"
 	case ArrayValue:
@@ -94,7 +98,8 @@ func (vt ValueType) String() string {
 	}
 }
 
-// ParseValueType converts a string to a ValueType
+// ParseValueType converts a string (numeric ID) to a ValueType.
+// These IDs match C++/Python/.NET implementations for cross-language compatibility.
 func ParseValueType(s string) ValueType {
 	switch s {
 	case "0":
@@ -122,9 +127,9 @@ func ParseValueType(s string) ValueType {
 	case "11":
 		return DoubleValue
 	case "12":
-		return BytesValue
+		return StringValue // Matches C++ string_value position
 	case "13":
-		return StringValue
+		return BytesValue // Matches C++ bytes_value position
 	case "14":
 		return ContainerValue
 	case "15":

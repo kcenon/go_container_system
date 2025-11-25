@@ -169,22 +169,44 @@ func serializeValueCpp(value core.Value) (string, error) {
 		}
 		dataStr = val
 	case core.BytesValue:
-		// Convert bytes to hex string (matching C++ hex encoding)
-		bytes, err := value.ToBytes()
-		if err != nil {
-			return "", err
-		}
-		dataStr = hex.EncodeToString(bytes)
+		// Convert raw bytes to hex string (matching C++ hex encoding)
+		// Use Data() to get raw bytes, not ToBytes() which returns binary format
+		rawBytes := value.Data()
+		dataStr = hex.EncodeToString(rawBytes) // lowercase hex
 	case core.ContainerValue:
-		// For containers, store child count (matching C++ behavior)
-		dataStr = "0" // Placeholder - full support requires nested container work
-	case core.ArrayValue:
-		// For arrays, store element count (matching C++ behavior)
-		if arrayVal, ok := value.(*values.ArrayValue); ok {
-			dataStr = fmt.Sprintf("%d", arrayVal.Count())
-		} else {
-			dataStr = "0"
+		// For containers, serialize with child count and all children recursively
+		if containerVal, ok := value.(*values.ContainerValue); ok {
+			childCount := containerVal.ChildCount()
+			// Container header
+			result := fmt.Sprintf("[%s,%s,%d];", name, typeName, childCount)
+			// Serialize all children recursively
+			for _, child := range containerVal.Children() {
+				childSer, err := serializeValueCpp(child)
+				if err != nil {
+					continue
+				}
+				result += childSer
+			}
+			return result, nil
 		}
+		dataStr = "0"
+	case core.ArrayValue:
+		// For arrays, serialize with element count and all elements recursively
+		if arrayVal, ok := value.(*values.ArrayValue); ok {
+			elementCount := arrayVal.Count()
+			// Array header
+			result := fmt.Sprintf("[%s,%s,%d];", name, typeName, elementCount)
+			// Serialize all elements recursively
+			for _, element := range arrayVal.Elements() {
+				elemSer, err := serializeValueCpp(element)
+				if err != nil {
+					continue
+				}
+				result += elemSer
+			}
+			return result, nil
+		}
+		dataStr = "0"
 	case core.NullValue:
 		dataStr = ""
 	default:
@@ -345,121 +367,198 @@ func DeserializeCppWire(wireData string) (*core.ValueContainer, error) {
 	if len(dataMatch) > 1 {
 		dataContent := dataMatch[1]
 
-		// Parse value items: [name,type,data];
-		itemRegex := regexp.MustCompile(`\[(\w+),\s*(\w+),\s*(.*?)\];`)
-		itemMatches := itemRegex.FindAllStringSubmatch(dataContent, -1)
-
-		for _, match := range itemMatches {
-			if len(match) < 4 {
-				continue
-			}
-
-			name := match[1]
-			typeName := match[2]
-			dataStr := match[3]
-
-			valueType, err := cppNameToValueType(typeName)
-			if err != nil {
-				continue
-			}
-
-			// Parse value based on type
-			var parsedValue core.Value
-			switch valueType {
-			case core.BoolValue:
-				val := (dataStr == "true")
-				parsedValue = values.NewBoolValue(name, val)
-
-			case core.ShortValue:
-				val, err := strconv.ParseInt(dataStr, 10, 16)
-				if err != nil {
-					continue
-				}
-				parsedValue = values.NewInt16Value(name, int16(val))
-
-			case core.UShortValue:
-				val, err := strconv.ParseUint(dataStr, 10, 16)
-				if err != nil {
-					continue
-				}
-				parsedValue = values.NewUInt16Value(name, uint16(val))
-
-			case core.IntValue:
-				val, err := strconv.ParseInt(dataStr, 10, 32)
-				if err != nil {
-					continue
-				}
-				parsedValue = values.NewInt32Value(name, int32(val))
-
-			case core.UIntValue:
-				val, err := strconv.ParseUint(dataStr, 10, 32)
-				if err != nil {
-					continue
-				}
-				parsedValue = values.NewUInt32Value(name, uint32(val))
-
-			case core.LongValue, core.LLongValue:
-				val, err := strconv.ParseInt(dataStr, 10, 64)
-				if err != nil {
-					continue
-				}
-				parsedValue = values.NewInt64Value(name, val)
-
-			case core.ULongValue, core.ULLongValue:
-				val, err := strconv.ParseUint(dataStr, 10, 64)
-				if err != nil {
-					continue
-				}
-				parsedValue = values.NewUInt64Value(name, val)
-
-			case core.FloatValue:
-				val, err := strconv.ParseFloat(dataStr, 32)
-				if err != nil {
-					continue
-				}
-				parsedValue = values.NewFloat32Value(name, float32(val))
-
-			case core.DoubleValue:
-				val, err := strconv.ParseFloat(dataStr, 64)
-				if err != nil {
-					continue
-				}
-				parsedValue = values.NewFloat64Value(name, val)
-
-			case core.StringValue:
-				parsedValue = values.NewStringValue(name, dataStr)
-
-			case core.BytesValue:
-				// Decode hex string
-				bytes, err := hex.DecodeString(dataStr)
-				if err != nil {
-					continue
-				}
-				parsedValue = values.NewBytesValue(name, bytes)
-
-			case core.ContainerValue, core.ArrayValue, core.NullValue:
-				// TODO: Implement nested container/array support
-				// For now, create empty container/array with element count
-				count, _ := strconv.Atoi(dataStr)
-				if valueType == core.ArrayValue {
-					// Create empty ArrayValue with reserved capacity
-					parsedValue = values.NewArrayValue(name)
-					// Note: Cannot pre-populate elements without nested deserialization
-					_ = count // Use count when nested support is implemented
-				} else {
-					// Skip ContainerValue and NullValue for now
-					continue
-				}
-
-			default:
-				continue
-			}
-
-			if parsedValue != nil {
-				container.AddValue(parsedValue)
-			}
+		// Parse values using recursive parser that supports nested containers/arrays
+		parsedValues, _ := parseValuesRecursive(dataContent)
+		for _, parsedValue := range parsedValues {
+			container.AddValue(parsedValue)
 		}
 	}
 
 	return container, nil
+}
+
+// parseValuesRecursive parses wire protocol values with support for nested containers and arrays.
+// It returns the parsed values and the remaining unparsed content.
+func parseValuesRecursive(content string) ([]core.Value, string) {
+	var result []core.Value
+
+	for len(content) > 0 {
+		// Skip whitespace
+		content = strings.TrimSpace(content)
+		if len(content) == 0 {
+			break
+		}
+
+		// Expect '[' to start a value
+		if content[0] != '[' {
+			break
+		}
+
+		// Parse single value and get remaining content
+		parsedValue, remaining := parseSingleValue(content)
+		if parsedValue == nil {
+			break
+		}
+
+		result = append(result, parsedValue)
+		content = remaining
+	}
+
+	return result, content
+}
+
+// parseSingleValue parses a single value from wire protocol format.
+// Returns the parsed value and remaining content, or nil if parsing fails.
+func parseSingleValue(content string) (core.Value, string) {
+	content = strings.TrimSpace(content)
+	if len(content) == 0 || content[0] != '[' {
+		return nil, content
+	}
+
+	// Find the closing '];' for this value
+	closingIdx := strings.Index(content, "];")
+	if closingIdx == -1 {
+		return nil, content
+	}
+
+	// Extract the value content (without brackets)
+	valueContent := content[1:closingIdx]
+	remaining := content[closingIdx+2:] // Move past '];'
+
+	// Parse the value: name,type,data
+	parts := strings.SplitN(valueContent, ",", 3)
+	if len(parts) < 3 {
+		return nil, remaining
+	}
+
+	name := strings.TrimSpace(parts[0])
+	typeName := strings.TrimSpace(parts[1])
+	dataStr := strings.TrimSpace(parts[2])
+
+	valueType, err := cppNameToValueType(typeName)
+	if err != nil {
+		return nil, remaining
+	}
+
+	var parsedValue core.Value
+
+	switch valueType {
+	case core.BoolValue:
+		val := (dataStr == "true")
+		parsedValue = values.NewBoolValue(name, val)
+
+	case core.ShortValue:
+		val, err := strconv.ParseInt(dataStr, 10, 16)
+		if err != nil {
+			return nil, remaining
+		}
+		parsedValue = values.NewInt16Value(name, int16(val))
+
+	case core.UShortValue:
+		val, err := strconv.ParseUint(dataStr, 10, 16)
+		if err != nil {
+			return nil, remaining
+		}
+		parsedValue = values.NewUInt16Value(name, uint16(val))
+
+	case core.IntValue:
+		val, err := strconv.ParseInt(dataStr, 10, 32)
+		if err != nil {
+			return nil, remaining
+		}
+		parsedValue = values.NewInt32Value(name, int32(val))
+
+	case core.UIntValue:
+		val, err := strconv.ParseUint(dataStr, 10, 32)
+		if err != nil {
+			return nil, remaining
+		}
+		parsedValue = values.NewUInt32Value(name, uint32(val))
+
+	case core.LongValue, core.LLongValue:
+		val, err := strconv.ParseInt(dataStr, 10, 64)
+		if err != nil {
+			return nil, remaining
+		}
+		parsedValue = values.NewInt64Value(name, val)
+
+	case core.ULongValue, core.ULLongValue:
+		val, err := strconv.ParseUint(dataStr, 10, 64)
+		if err != nil {
+			return nil, remaining
+		}
+		parsedValue = values.NewUInt64Value(name, val)
+
+	case core.FloatValue:
+		val, err := strconv.ParseFloat(dataStr, 32)
+		if err != nil {
+			return nil, remaining
+		}
+		parsedValue = values.NewFloat32Value(name, float32(val))
+
+	case core.DoubleValue:
+		val, err := strconv.ParseFloat(dataStr, 64)
+		if err != nil {
+			return nil, remaining
+		}
+		parsedValue = values.NewFloat64Value(name, val)
+
+	case core.StringValue:
+		parsedValue = values.NewStringValue(name, dataStr)
+
+	case core.BytesValue:
+		// Decode hex string
+		bytes, err := hex.DecodeString(dataStr)
+		if err != nil {
+			return nil, remaining
+		}
+		parsedValue = values.NewBytesValue(name, bytes)
+
+	case core.ContainerValue:
+		// Parse child count and recursively parse children
+		childCount, err := strconv.Atoi(dataStr)
+		if err != nil {
+			return nil, remaining
+		}
+		containerVal := values.NewContainerValue(name)
+		// Parse children recursively
+		for i := 0; i < childCount && len(remaining) > 0; i++ {
+			child, newRemaining := parseSingleValue(remaining)
+			if child != nil {
+				containerVal.AddChild(child)
+				remaining = newRemaining
+			} else {
+				break
+			}
+		}
+		parsedValue = containerVal
+
+	case core.ArrayValue:
+		// Parse element count and recursively parse elements
+		elementCount, err := strconv.Atoi(dataStr)
+		if err != nil {
+			return nil, remaining
+		}
+		arrayVal := values.NewArrayValue(name)
+		// Parse elements recursively
+		for i := 0; i < elementCount && len(remaining) > 0; i++ {
+			element, newRemaining := parseSingleValue(remaining)
+			if element != nil {
+				arrayVal.Append(element)
+				remaining = newRemaining
+			} else {
+				break
+			}
+		}
+		parsedValue = arrayVal
+
+	case core.NullValue:
+		// Skip null values
+		return nil, remaining
+
+	default:
+		return nil, remaining
+	}
+
+	return parsedValue, remaining
 }
