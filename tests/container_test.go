@@ -103,10 +103,9 @@ func TestBytesValue(t *testing.T) {
 		t.Errorf("Expected name 'test_bytes', got '%s'", bv.Name())
 	}
 
-	val, err := bv.ToBytes()
-	if err != nil {
-		t.Errorf("ToBytes failed: %v", err)
-	}
+	// Use Value() to get raw bytes
+	// Note: ToBytes() returns the binary serialization format with type/name/size headers
+	val := bv.Value()
 	if len(val) != 4 {
 		t.Errorf("Expected 4 bytes, got %d", len(val))
 	}

@@ -295,7 +295,8 @@ func TestBytesInterop(t *testing.T) {
 		t.Fatal("Missing 'signature' value")
 	}
 
-	restoredBytes, _ := signature.ToBytes()
+	// Use Data() to get raw bytes, not ToBytes() which returns binary serialization format
+	restoredBytes := signature.Data()
 	if len(restoredBytes) != len(testBytes) {
 		t.Errorf("Byte length mismatch: expected %d, got %d", len(testBytes), len(restoredBytes))
 	}

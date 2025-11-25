@@ -26,8 +26,8 @@ func TestBinaryCompatibility_PrimitiveTypes(t *testing.T) {
 		{"UInt64", values.NewUInt64Value("test_u64", 18446744073709551615), 0x09},
 		{"Float32", values.NewFloat32Value("test_f32", 3.14159), 0x0A},
 		{"Float64", values.NewFloat64Value("test_f64", 2.71828182845), 0x0B},
-		{"String", values.NewStringValue("test_str", "Hello, World!"), 0x0D},
-		{"Bytes", values.NewBytesValue("test_bytes", []byte{0xDE, 0xAD, 0xBE, 0xEF}), 0x0C},
+		{"String", values.NewStringValue("test_str", "Hello, World!"), 0x0C}, // C++ string_value = 12
+		{"Bytes", values.NewBytesValue("test_bytes", []byte{0xDE, 0xAD, 0xBE, 0xEF}), 0x0D},  // C++ bytes_value = 13
 	}
 
 	for _, tt := range tests {
@@ -179,7 +179,7 @@ func TestBinaryInterop_KnownRustData(t *testing.T) {
 	}{
 		{
 			name:      "Rust_Int32",
-			hexData:   "04" + "07000000" + "7465737469333332" + "04000000" + "2A000000", // Int32 "testi32" = 42
+			hexData:   "04" + "07000000" + "74657374693332" + "04000000" + "2A000000", // Int32 "testi32" = 42
 			valueType: core.IntValue,
 			valueName: "testi32",
 			checkFunc: func(t *testing.T, v core.Value) {
@@ -209,7 +209,7 @@ func TestBinaryInterop_KnownRustData(t *testing.T) {
 		},
 		{
 			name:      "Rust_String",
-			hexData:   "0D" + "05000000" + "6D7973747220" + "0D000000" + "48656C6C6F2C20576F726C6421", // String "mystr" = "Hello, World!"
+			hexData:   "0C" + "05000000" + "6D79737472" + "0D000000" + "48656C6C6F2C20576F726C6421", // String "mystr" = "Hello, World!" (type 12 = StringValue)
 			valueType: core.StringValue,
 			valueName: "mystr",
 			checkFunc: func(t *testing.T, v core.Value) {
