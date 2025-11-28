@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	fmt.Println("=== Go ArrayValue Quick Tests ===\n")
+	fmt.Println("=== Go ArrayValue Quick Tests ===")
 
 	// Test 1: Basic creation
 	fmt.Println("Test 1: Basic creation")
@@ -16,7 +16,7 @@ func main() {
 	if arr.Count() != 0 || !arr.IsEmpty() {
 		log.Fatal("Empty array test failed")
 	}
-	fmt.Println("✓ Empty array created successfully\n")
+	fmt.Println("✓ Empty array created successfully")
 
 	// Test 2: Append elements
 	fmt.Println("Test 2: Append elements")
@@ -45,7 +45,7 @@ func main() {
 	if elem0 == nil || elem1 == nil || elem2 == nil {
 		log.Fatal("Element values incorrect")
 	}
-	fmt.Println("✓ Appending elements works\n")
+	fmt.Println("✓ Appending elements works")
 
 	// Test 3: Heterogeneous array
 	fmt.Println("Test 3: Heterogeneous array")
@@ -58,7 +58,7 @@ func main() {
 	if mixed.Count() != 4 {
 		log.Fatalf("Expected 4 elements, got %d", mixed.Count())
 	}
-	fmt.Println("✓ Mixed-type array works\n")
+	fmt.Println("✓ Mixed-type array works")
 
 	// Test 4: Serialization
 	fmt.Println("Test 4: Serialization")
@@ -79,7 +79,7 @@ func main() {
 		preview = serialized[:50]
 	}
 	fmt.Printf("  Serialized: %s\n", preview)
-	fmt.Println("✓ Serialization works\n")
+	fmt.Println("✓ Serialization works")
 
 	// Test 5: Index out of range
 	fmt.Println("Test 5: Index out of range")
@@ -87,7 +87,7 @@ func main() {
 	if err == nil {
 		log.Fatal("Expected error for out of range index")
 	}
-	fmt.Println("✓ Index bounds checking works\n")
+	fmt.Println("✓ Index bounds checking works")
 
 	// Test 6: Clear
 	fmt.Println("Test 6: Clear")
@@ -95,7 +95,7 @@ func main() {
 	if arr.Count() != 0 || !arr.IsEmpty() {
 		log.Fatal("Clear failed")
 	}
-	fmt.Println("✓ Clear works\n")
+	fmt.Println("✓ Clear works")
 
 	// Test 7: ToJSON
 	fmt.Println("Test 7: ToJSON")
@@ -116,7 +116,7 @@ func main() {
 		jsonPreview = jsonStr[:80]
 	}
 	fmt.Printf("  JSON: %s\n", jsonPreview)
-	fmt.Println("✓ ToJSON works\n")
+	fmt.Println("✓ ToJSON works")
 
 	fmt.Println("=== All Tests Passed ===")
 }

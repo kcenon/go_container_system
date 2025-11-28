@@ -1,0 +1,22 @@
+# golangci-lint configuration v2
+# https://golangci-lint.run/usage/configuration/
+#
+# Note: Many linters are disabled due to existing code patterns.
+# These can be enabled gradually as the codebase is improved.
+
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - govet         # Vet examines Go source code
+    - ineffassign   # Detect ineffectual assignments
+    - misspell      # Check for misspellings
+    - unconvert     # Remove unnecessary type conversions
+  settings:
+    misspell:
+      locale: US
+
+issues:
+  max-issues-per-linter: 50
+  max-same-issues: 10

@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	fmt.Println("=== Advanced Go Container System Examples ===\n")
+	fmt.Println("=== Advanced Go Container System Examples ===")
 
 	// Example 1: MessagePack binary serialization
 	messagePackExample()
