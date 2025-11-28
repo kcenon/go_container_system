@@ -2,6 +2,7 @@ package tests
 
 import (
 	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 
@@ -284,8 +285,7 @@ func TestFileIOOperations(t *testing.T) {
 
 	// Test save/load with string format
 	t.Run("StringFormat", func(t *testing.T) {
-		filePath := "/tmp/test_container.dat"
-		defer os.Remove(filePath)
+		filePath := filepath.Join(t.TempDir(), "test_container.dat")
 
 		// Save
 		if err := container.SaveToFile(filePath); err != nil {
@@ -306,8 +306,7 @@ func TestFileIOOperations(t *testing.T) {
 
 	// Test save/load with MessagePack format
 	t.Run("MessagePackFormat", func(t *testing.T) {
-		filePath := "/tmp/test_container.msgpack"
-		defer os.Remove(filePath)
+		filePath := filepath.Join(t.TempDir(), "test_container.msgpack")
 
 		// Save
 		if err := container.SaveToFileMessagePack(filePath); err != nil {
@@ -332,8 +331,7 @@ func TestFileIOOperations(t *testing.T) {
 
 	// Test save with JSON format
 	t.Run("JSONFormat", func(t *testing.T) {
-		filePath := "/tmp/test_container.json"
-		defer os.Remove(filePath)
+		filePath := filepath.Join(t.TempDir(), "test_container.json")
 
 		// Save
 		if err := container.SaveToFileJSON(filePath); err != nil {
@@ -350,8 +348,7 @@ func TestFileIOOperations(t *testing.T) {
 
 	// Test save with XML format
 	t.Run("XMLFormat", func(t *testing.T) {
-		filePath := "/tmp/test_container.xml"
-		defer os.Remove(filePath)
+		filePath := filepath.Join(t.TempDir(), "test_container.xml")
 
 		// Save
 		if err := container.SaveToFileXML(filePath); err != nil {
