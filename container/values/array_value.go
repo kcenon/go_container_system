@@ -586,6 +586,46 @@ func deserializeValue(data []byte) (core.Value, int, error) {
 
 		return NewBytesValue(name, value), offset, nil
 
+	case core.LongValue:
+		// Deserialize LongValue (type 6) - 32-bit signed for C++ compatibility
+		if len(data) < 13 {
+			return nil, 0, fmt.Errorf("Insufficient data for LongValue")
+		}
+
+		offset := 1
+		nameLen := uint32(data[offset]) | (uint32(data[offset+1]) << 8) | (uint32(data[offset+2]) << 16) | (uint32(data[offset+3]) << 24)
+		offset += 4
+
+		name := string(data[offset : offset+int(nameLen)])
+		offset += int(nameLen)
+
+		offset += 4 // Skip value_size
+
+		value := int32(data[offset]) | (int32(data[offset+1]) << 8) | (int32(data[offset+2]) << 16) | (int32(data[offset+3]) << 24)
+		offset += 4
+
+		return NewInt32Value(name, value), offset, nil
+
+	case core.ULongValue:
+		// Deserialize ULongValue (type 7) - 32-bit unsigned for C++ compatibility
+		if len(data) < 13 {
+			return nil, 0, fmt.Errorf("Insufficient data for ULongValue")
+		}
+
+		offset := 1
+		nameLen := uint32(data[offset]) | (uint32(data[offset+1]) << 8) | (uint32(data[offset+2]) << 16) | (uint32(data[offset+3]) << 24)
+		offset += 4
+
+		name := string(data[offset : offset+int(nameLen)])
+		offset += int(nameLen)
+
+		offset += 4 // Skip value_size
+
+		value := uint32(data[offset]) | (uint32(data[offset+1]) << 8) | (uint32(data[offset+2]) << 16) | (uint32(data[offset+3]) << 24)
+		offset += 4
+
+		return NewUInt32Value(name, value), offset, nil
+
 	case core.StringValue:
 		// Deserialize StringValue (type 12) - matches C++ string_value position
 		// Format: [type:1][name_len:4][name][value_size:4][string_bytes]
@@ -608,7 +648,143 @@ func deserializeValue(data []byte) (core.Value, int, error) {
 
 		return NewStringValue(name, strValue), offset, nil
 
+	case core.ContainerValue:
+		// Deserialize ContainerValue (type 14) - nested container
+		// Format: [type:1][name_len:4][name][value_size:4][child_count:4][children...]
+		if len(data) < 13 {
+			return nil, 0, fmt.Errorf("Insufficient data for ContainerValue")
+		}
+
+		offset := 1
+		nameLen := uint32(data[offset]) | (uint32(data[offset+1]) << 8) | (uint32(data[offset+2]) << 16) | (uint32(data[offset+3]) << 24)
+		offset += 4
+
+		name := string(data[offset : offset+int(nameLen)])
+		offset += int(nameLen)
+
+		valueSize := uint32(data[offset]) | (uint32(data[offset+1]) << 8) | (uint32(data[offset+2]) << 16) | (uint32(data[offset+3]) << 24)
+		offset += 4
+
+		// Recursively deserialize container data
+		containerData := data[offset : offset+int(valueSize)]
+		container, err := deserializeContainerData(name, containerData)
+		if err != nil {
+			return nil, 0, fmt.Errorf("Failed to deserialize ContainerValue: %v", err)
+		}
+		offset += int(valueSize)
+
+		return container, offset, nil
+
+	case core.ArrayValue:
+		// Deserialize ArrayValue (type 15) - heterogeneous array
+		// Format: [type:1][name_len:4][name][value_size:4][count:4][elements...]
+		if len(data) < 13 {
+			return nil, 0, fmt.Errorf("Insufficient data for ArrayValue")
+		}
+
+		offset := 1
+		nameLen := uint32(data[offset]) | (uint32(data[offset+1]) << 8) | (uint32(data[offset+2]) << 16) | (uint32(data[offset+3]) << 24)
+		offset += 4
+
+		name := string(data[offset : offset+int(nameLen)])
+		offset += int(nameLen)
+
+		valueSize := uint32(data[offset]) | (uint32(data[offset+1]) << 8) | (uint32(data[offset+2]) << 16) | (uint32(data[offset+3]) << 24)
+		offset += 4
+
+		// Recursively deserialize array data
+		arrayData := data[offset : offset+int(valueSize)]
+		arr, err := deserializeArrayData(name, arrayData)
+		if err != nil {
+			return nil, 0, fmt.Errorf("Failed to deserialize ArrayValue: %v", err)
+		}
+		offset += int(valueSize)
+
+		return arr, offset, nil
+
 	default:
 		return nil, 0, fmt.Errorf("Unsupported value type for deserialization: %d", typeID)
 	}
+}
+
+// deserializeArrayData deserializes array element data (after header is parsed).
+// The data format is: [count:4 LE][element1][element2]...
+func deserializeArrayData(name string, data []byte) (*ArrayValue, error) {
+	if len(data) < 4 {
+		return nil, fmt.Errorf("Array data too short: %d bytes", len(data))
+	}
+
+	offset := 0
+
+	// Read element count (4 bytes, little-endian)
+	count := uint32(data[offset]) |
+		(uint32(data[offset+1]) << 8) |
+		(uint32(data[offset+2]) << 16) |
+		(uint32(data[offset+3]) << 24)
+	offset += 4
+
+	// Create ArrayValue
+	result := NewArrayValue(name)
+
+	// Deserialize all elements
+	for i := uint32(0); i < count; i++ {
+		if offset >= len(data) {
+			return nil, fmt.Errorf("Unexpected end of data while reading element %d/%d", i+1, count)
+		}
+
+		// Extract remaining data for element deserialization
+		elementData := data[offset:]
+
+		// Deserialize element using factory
+		element, bytesRead, err := deserializeValue(elementData)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to deserialize element %d: %v", i, err)
+		}
+
+		result.Append(element)
+		offset += bytesRead
+	}
+
+	return result, nil
+}
+
+// deserializeContainerData deserializes container child data (after header is parsed).
+// The data format is: [child_count:4 LE][child1][child2]...
+func deserializeContainerData(name string, data []byte) (*ContainerValue, error) {
+	if len(data) < 4 {
+		return nil, fmt.Errorf("Container data too short: %d bytes", len(data))
+	}
+
+	offset := 0
+
+	// Read child count (4 bytes, little-endian)
+	childCount := uint32(data[offset]) |
+		(uint32(data[offset+1]) << 8) |
+		(uint32(data[offset+2]) << 16) |
+		(uint32(data[offset+3]) << 24)
+	offset += 4
+
+	// Create ContainerValue
+	result := NewContainerValue(name)
+
+	// Deserialize all children
+	for i := uint32(0); i < childCount; i++ {
+		if offset >= len(data) {
+			return nil, fmt.Errorf("Unexpected end of data while reading child %d/%d", i+1, childCount)
+		}
+
+		// Extract remaining data for child deserialization
+		childData := data[offset:]
+
+		// Deserialize child using factory
+		child, bytesRead, err := deserializeValue(childData)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to deserialize child %d: %v", i, err)
+		}
+
+		result.AddChild(child)
+		offset += bytesRead
+	}
+
+	return result, nil
 }
