@@ -6,9 +6,6 @@
 
 version: "2"
 
-run:
-  timeout: 5m
-
 linters:
   default: none
   enable:
@@ -16,10 +13,9 @@ linters:
     - ineffassign   # Detect ineffectual assignments
     - misspell      # Check for misspellings
     - unconvert     # Remove unnecessary type conversions
-
-linters-settings:
-  misspell:
-    locale: US
+  settings:
+    misspell:
+      locale: US
 
 issues:
   max-issues-per-linter: 50
