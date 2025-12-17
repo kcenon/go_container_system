@@ -137,6 +137,44 @@ message.AddValue(values.NewFloat64Value("total_amount", 299.99))
 data, err := message.Serialize()
 ```
 
+### Fluent Builder API
+
+The ContainerBuilder provides a fluent, chainable API for constructing ValueContainer instances with improved readability:
+
+```go
+import "github.com/kcenon/go_container_system/container/messaging"
+
+// Create container using fluent builder pattern
+container, err := messaging.NewContainerBuilder().
+    WithSource("client_app", "instance_1").
+    WithTarget("server_api", "v2").
+    WithType("user_registration").
+    WithValues(
+        values.NewStringValue("username", "alice"),
+        values.NewInt32Value("age", 30),
+    ).
+    WithThreadSafe(true).
+    Build()
+
+if err != nil {
+    log.Fatal(err)
+}
+```
+
+**Builder Methods**:
+- `WithSource(id, subID string)` - Set source identification
+- `WithTarget(id, subID string)` - Set target identification
+- `WithType(messageType string)` - Set message type
+- `WithValues(values ...Value)` - Add multiple values (can be called multiple times)
+- `WithThreadSafe(enabled bool)` - Enable/disable thread-safe mode
+- `Build()` - Construct the final ValueContainer
+
+**Benefits**:
+- Readable, self-documenting code
+- Optional parameters without constructor overloading
+- Compile-time type safety
+- Easy to extend with new configuration options
+
 ### Wire Protocol Integration
 
 - **Binary serialization** with efficient encoding
@@ -215,6 +253,68 @@ for i := 0; i < 10; i++ {
 
 wg.Wait()
 ```
+
+### Dependency Injection Support
+
+The container system provides first-class support for dependency injection frameworks through the `ContainerFactory` interface:
+
+```go
+import "github.com/kcenon/go_container_system/container/di"
+
+// Create factory instance
+factory := di.NewContainerFactory()
+
+// Use factory methods
+container := factory.NewContainer()
+containerWithType := factory.NewContainerWithType("request")
+containerFull := factory.NewContainerFull("client", "1", "server", "main", "message")
+
+// Get builder from factory
+builder := factory.NewBuilder()
+```
+
+**ContainerFactory Interface**:
+```go
+type ContainerFactory interface {
+    NewContainer() *core.ValueContainer
+    NewContainerWithType(messageType string) *core.ValueContainer
+    NewContainerWithTarget(targetID, targetSubID, messageType string) *core.ValueContainer
+    NewContainerFull(sourceID, sourceSubID, targetID, targetSubID, messageType string) *core.ValueContainer
+    NewBuilder() *messaging.ContainerBuilder
+}
+```
+
+**Integration with Google Wire**:
+```go
+// wire.go
+//go:build wireinject
+
+package main
+
+import (
+    "github.com/google/wire"
+    "github.com/kcenon/go_container_system/container/di"
+)
+
+var ProviderSet = wire.NewSet(
+    di.NewContainerFactory,
+    wire.Bind(new(di.ContainerFactory), new(*di.DefaultContainerFactory)),
+)
+```
+
+**Integration with Uber Dig**:
+```go
+import "go.uber.org/dig"
+
+container := dig.New()
+container.Provide(di.NewContainerFactory)
+```
+
+**Benefits**:
+- Easy mocking for unit tests
+- Decoupled container creation
+- Standard interface for DI frameworks
+- Consistent factory pattern across the application
 
 ### Memory Optimization
 
