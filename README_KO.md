@@ -34,6 +34,9 @@ Go Container System은 Go를 위한 고성능 타입 안전 컨테이너 프레�
   - 값 추가/제거/쿼리
   - 컨테이너 복사 (값 포함/제외)
   - 응답 메시지를 위한 헤더 스왑
+- **플루언트 빌더 API**: 가독성 높은 컨테이너 생성을 위한 ContainerBuilder 패턴
+  - source, target, type, values를 위한 체이닝 메서드
+  - 선택적 스레드 안전 모드
 
 ## 설치
 
@@ -83,6 +86,24 @@ jsonStr, _ := container.ToJSON()
 xmlStr, _ := container.ToXML()
 ```
 
+### 플루언트 빌더 API 사용
+
+```go
+import "github.com/kcenon/go_container_system/container/messaging"
+
+// 플루언트 빌더 패턴으로 컨테이너 생성
+container, err := messaging.NewContainerBuilder().
+    WithSource("client", "1").
+    WithTarget("server", "main").
+    WithType("request").
+    WithValues(
+        values.NewStringValue("action", "login"),
+        values.NewStringValue("user", "alice"),
+    ).
+    WithThreadSafe(true).
+    Build()
+```
+
 ### 컨테이너 값 작업
 
 ```go
@@ -113,6 +134,8 @@ go_container_system/
 │   │   ├── value_types.go   # 값 타입 열거형
 │   │   ├── value.go         # Value 인터페이스 및 기본 구현
 │   │   └── container.go     # ValueContainer 구현
+│   ├── messaging/      # 플루언트 빌더 API
+│   │   └── builder.go       # ContainerBuilder 구현
 │   └── values/         # 구체적인 값 구현
 │       ├── bool_value.go
 │       ├── numeric_value.go

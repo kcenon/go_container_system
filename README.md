@@ -34,6 +34,9 @@ The Go Container System is a high-performance, type-safe container framework for
   - Value add/remove/query
   - Container copy (with/without values)
   - Header swap for response messages
+- **Fluent Builder API**: ContainerBuilder pattern for readable container construction
+  - Chainable methods for source, target, type, and values
+  - Optional thread-safe mode
 
 ## Installation
 
@@ -113,6 +116,8 @@ go_container_system/
 │   │   ├── value_types.go   # Value type enumeration
 │   │   ├── value.go         # Value interface and base implementation
 │   │   └── container.go     # ValueContainer implementation
+│   ├── messaging/      # Fluent builder API
+│   │   └── builder.go       # ContainerBuilder implementation
 │   └── values/         # Concrete value implementations
 │       ├── bool_value.go
 │       ├── numeric_value.go
@@ -241,6 +246,24 @@ xml, _ := container.ToXML()
 // Deserialization
 container.Deserialize(data)
 container.DeserializeArray(bytes)
+```
+
+### ContainerBuilder (Fluent API)
+
+```go
+import "github.com/kcenon/go_container_system/container/messaging"
+
+// Create container using fluent builder pattern
+container, err := messaging.NewContainerBuilder().
+    WithSource("client", "1").
+    WithTarget("server", "main").
+    WithType("request").
+    WithValues(
+        values.NewStringValue("action", "login"),
+        values.NewStringValue("user", "alice"),
+    ).
+    WithThreadSafe(true).
+    Build()
 ```
 
 ## Examples
