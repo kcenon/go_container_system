@@ -23,6 +23,10 @@ go_container_system/
 │   │   ├── container_value.go   # Nested container value
 │   │   ├── array_value.go       # Array value (wire protocol v2)
 │   │   └── *_test.go            # Unit tests for values
+│   ├── 📁 messaging/            # Fluent builder API
+│   │   └── builder.go           # ContainerBuilder implementation
+│   ├── 📁 di/                   # Dependency injection support
+│   │   └── provider.go          # ContainerFactory interface and provider
 │   └── 📁 wireprotocol/         # Binary wire protocol
 │       └── wire_protocol.go     # Binary serialization/deserialization
 ├── 📁 examples/                 # Example applications
@@ -31,6 +35,8 @@ go_container_system/
 ├── 📁 tests/                    # Test suite
 │   ├── container_test.go        # Container unit tests
 │   ├── container_bench_test.go  # Performance benchmarks
+│   ├── builder_test.go          # ContainerBuilder unit tests
+│   ├── di_provider_test.go      # DI ContainerFactory unit tests
 │   ├── interop_test.go          # Cross-language compatibility tests
 │   ├── binary_interop_test.go   # Binary format tests
 │   └── cross_language_test.go   # Wire protocol compatibility tests
@@ -378,6 +384,93 @@ func NewStringArrayValue(name string, values []string) *ArrayValue
 // ... other array type constructors
 ```
 
+## Messaging Module
+
+### `container/messaging/builder.go`
+
+**Purpose**: Provides fluent builder API for ValueContainer construction
+
+**Key Features**:
+- Chainable method calls for readable code
+- Optional configuration via method chaining
+- Thread-safe mode support
+- Clean separation of construction and configuration
+
+**Public Interface**:
+```go
+type ContainerBuilder struct {
+    // Unexported fields
+}
+
+// Constructor
+func NewContainerBuilder() *ContainerBuilder
+
+// Configuration methods (all return *ContainerBuilder for chaining)
+func (b *ContainerBuilder) WithSource(id, subID string) *ContainerBuilder
+func (b *ContainerBuilder) WithTarget(id, subID string) *ContainerBuilder
+func (b *ContainerBuilder) WithType(msgType string) *ContainerBuilder
+func (b *ContainerBuilder) WithValues(values ...core.Value) *ContainerBuilder
+func (b *ContainerBuilder) WithThreadSafe(enabled bool) *ContainerBuilder
+
+// Build method
+func (b *ContainerBuilder) Build() (*core.ValueContainer, error)
+```
+
+**Usage Example**:
+```go
+container, err := messaging.NewContainerBuilder().
+    WithSource("client", "1").
+    WithTarget("server", "main").
+    WithType("request").
+    WithValues(values.NewStringValue("key", "value")).
+    WithThreadSafe(true).
+    Build()
+```
+
+## Dependency Injection Module
+
+### `container/di/provider.go`
+
+**Purpose**: Provides DI framework integration support
+
+**Key Features**:
+- Standard factory interface for container creation
+- Easy mocking for unit tests
+- Compatible with Google Wire and Uber Dig
+- Consistent container creation patterns
+
+**Public Interface**:
+```go
+// ContainerFactory interface for dependency injection
+type ContainerFactory interface {
+    NewContainer() *core.ValueContainer
+    NewContainerWithType(messageType string) *core.ValueContainer
+    NewContainerWithTarget(targetID, targetSubID, messageType string) *core.ValueContainer
+    NewContainerFull(sourceID, sourceSubID, targetID, targetSubID, messageType string) *core.ValueContainer
+    NewBuilder() *messaging.ContainerBuilder
+}
+
+// Default implementation
+type DefaultContainerFactory struct{}
+
+// Provider function for DI frameworks
+func NewContainerFactory() ContainerFactory
+```
+
+**Google Wire Integration**:
+```go
+var ProviderSet = wire.NewSet(
+    di.NewContainerFactory,
+    wire.Bind(new(di.ContainerFactory), new(*di.DefaultContainerFactory)),
+)
+```
+
+**Uber Dig Integration**:
+```go
+container := dig.New()
+container.Provide(di.NewContainerFactory)
+```
+
 ## Wire Protocol Module
 
 ### `container/wireprotocol/wire_protocol.go`
@@ -617,6 +710,10 @@ core (value_types, value, container)
     ↓
 values (bool, numeric, string, bytes, container, array)
     ↓
+messaging (ContainerBuilder)
+    ↓
+di (ContainerFactory, DefaultContainerFactory)
+    ↓
 wireprotocol (binary serialization)
     ↓
 Application Layer
@@ -625,6 +722,8 @@ Application Layer
 **Dependency Rules**:
 - `core` has no internal dependencies
 - `values` depends on `core`
+- `messaging` depends on `core`
+- `di` depends on `core` and `messaging`
 - `wireprotocol` depends on `core` and `values`
 - `examples` and `tests` depend on all packages
 

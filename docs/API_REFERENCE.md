@@ -10,9 +10,11 @@
 2. [Value Types](#value-types)
 3. [Value Interface](#value-interface)
 4. [ValueContainer](#valuecontainer)
-5. [Concrete Value Types](#concrete-value-types)
-6. [Serialization](#serialization)
-7. [Wire Protocol](#wire-protocol)
+5. [ContainerBuilder](#containerbuilder)
+6. [Dependency Injection](#dependency-injection)
+7. [Concrete Value Types](#concrete-value-types)
+8. [Serialization](#serialization)
+9. [Wire Protocol](#wire-protocol)
 
 ---
 
@@ -25,6 +27,8 @@ import (
     "github.com/kcenon/go_container_system/container/core"
     "github.com/kcenon/go_container_system/container/values"
     "github.com/kcenon/go_container_system/container/wireprotocol"
+    "github.com/kcenon/go_container_system/container/messaging"
+    "github.com/kcenon/go_container_system/container/di"
 )
 ```
 
@@ -32,6 +36,8 @@ import (
 - `container/core` - Core types, interfaces, and container implementation
 - `container/values` - Concrete value type implementations
 - `container/wireprotocol` - Binary wire protocol serialization
+- `container/messaging` - Fluent builder API for container construction
+- `container/di` - Dependency injection support and factory interfaces
 
 ---
 
@@ -857,6 +863,260 @@ Loads container from MessagePack file.
 
 ```go
 err := container.LoadFromFileMessagePack("data.msgpack")
+```
+
+---
+
+## ContainerBuilder
+
+### Overview
+
+**Package**: `github.com/kcenon/go_container_system/container/messaging`
+
+The ContainerBuilder provides a fluent API for constructing ValueContainer instances with improved readability and flexibility.
+
+### Constructor
+
+#### `NewContainerBuilder() *ContainerBuilder`
+
+Creates a new builder instance.
+
+```go
+builder := messaging.NewContainerBuilder()
+```
+
+### Configuration Methods
+
+All configuration methods return `*ContainerBuilder` for method chaining.
+
+#### `WithSource(id, subID string) *ContainerBuilder`
+
+Sets the source identification.
+
+```go
+builder.WithSource("client_app", "instance_1")
+```
+
+#### `WithTarget(id, subID string) *ContainerBuilder`
+
+Sets the target identification.
+
+```go
+builder.WithTarget("server_api", "v2")
+```
+
+#### `WithType(msgType string) *ContainerBuilder`
+
+Sets the message type.
+
+```go
+builder.WithType("user_registration")
+```
+
+#### `WithValues(values ...core.Value) *ContainerBuilder`
+
+Adds values to the container. Can be called multiple times.
+
+```go
+builder.WithValues(
+    values.NewStringValue("username", "alice"),
+    values.NewInt32Value("age", 30),
+)
+```
+
+#### `WithThreadSafe(enabled bool) *ContainerBuilder`
+
+Enables or disables thread-safe mode.
+
+```go
+builder.WithThreadSafe(true)
+```
+
+### Build Method
+
+#### `Build() (*core.ValueContainer, error)`
+
+Constructs the final ValueContainer with all configured properties.
+
+```go
+container, err := builder.Build()
+if err != nil {
+    log.Fatal(err)
+}
+```
+
+### Complete Example
+
+```go
+import (
+    "github.com/kcenon/go_container_system/container/messaging"
+    "github.com/kcenon/go_container_system/container/values"
+)
+
+container, err := messaging.NewContainerBuilder().
+    WithSource("client", "1").
+    WithTarget("server", "main").
+    WithType("request").
+    WithValues(
+        values.NewStringValue("action", "login"),
+        values.NewStringValue("username", "alice"),
+    ).
+    WithThreadSafe(true).
+    Build()
+
+if err != nil {
+    log.Fatal(err)
+}
+
+// Use container
+fmt.Println(container.MessageType()) // "request"
+```
+
+---
+
+## Dependency Injection
+
+### Overview
+
+**Package**: `github.com/kcenon/go_container_system/container/di`
+
+The DI package provides standard interfaces and implementations for dependency injection framework integration.
+
+### ContainerFactory Interface
+
+```go
+type ContainerFactory interface {
+    // NewContainer creates a new empty ValueContainer.
+    NewContainer() *core.ValueContainer
+
+    // NewContainerWithType creates a ValueContainer with the specified message type.
+    NewContainerWithType(messageType string) *core.ValueContainer
+
+    // NewContainerWithTarget creates a ValueContainer with target information.
+    NewContainerWithTarget(targetID, targetSubID, messageType string) *core.ValueContainer
+
+    // NewContainerFull creates a ValueContainer with full header information.
+    NewContainerFull(sourceID, sourceSubID, targetID, targetSubID, messageType string) *core.ValueContainer
+
+    // NewBuilder creates a new ContainerBuilder for fluent container construction.
+    NewBuilder() *messaging.ContainerBuilder
+}
+```
+
+### Provider Function
+
+#### `NewContainerFactory() ContainerFactory`
+
+Creates a new ContainerFactory instance. This is the primary provider function for DI frameworks.
+
+```go
+factory := di.NewContainerFactory()
+```
+
+### Factory Methods
+
+#### `NewContainer() *core.ValueContainer`
+
+Creates an empty container.
+
+```go
+container := factory.NewContainer()
+```
+
+#### `NewContainerWithType(messageType string) *core.ValueContainer`
+
+Creates a container with message type.
+
+```go
+container := factory.NewContainerWithType("request")
+```
+
+#### `NewContainerWithTarget(targetID, targetSubID, messageType string) *core.ValueContainer`
+
+Creates a container with target information.
+
+```go
+container := factory.NewContainerWithTarget("server", "main", "request")
+```
+
+#### `NewContainerFull(sourceID, sourceSubID, targetID, targetSubID, messageType string) *core.ValueContainer`
+
+Creates a container with full header.
+
+```go
+container := factory.NewContainerFull("client", "1", "server", "main", "request")
+```
+
+#### `NewBuilder() *messaging.ContainerBuilder`
+
+Creates a new ContainerBuilder instance.
+
+```go
+builder := factory.NewBuilder()
+container, _ := builder.WithType("request").Build()
+```
+
+### DI Framework Integration
+
+#### Google Wire
+
+```go
+// wire.go
+//go:build wireinject
+
+package main
+
+import (
+    "github.com/google/wire"
+    "github.com/kcenon/go_container_system/container/di"
+)
+
+var ProviderSet = wire.NewSet(
+    di.NewContainerFactory,
+    wire.Bind(new(di.ContainerFactory), new(*di.DefaultContainerFactory)),
+)
+
+func InitializeApp() (*App, error) {
+    wire.Build(ProviderSet, NewApp)
+    return nil, nil
+}
+```
+
+#### Uber Dig
+
+```go
+import (
+    "go.uber.org/dig"
+    "github.com/kcenon/go_container_system/container/di"
+)
+
+func BuildContainer() *dig.Container {
+    container := dig.New()
+    container.Provide(di.NewContainerFactory)
+    return container
+}
+```
+
+### Testing with Mocks
+
+```go
+type mockContainerFactory struct{}
+
+func (m *mockContainerFactory) NewContainer() *core.ValueContainer {
+    return core.NewValueContainerWithType("mocked")
+}
+
+func (m *mockContainerFactory) NewContainerWithType(messageType string) *core.ValueContainer {
+    return core.NewValueContainerWithType("mocked_" + messageType)
+}
+
+// ... implement other methods
+
+func TestWithMock(t *testing.T) {
+    var factory di.ContainerFactory = &mockContainerFactory{}
+    container := factory.NewContainer()
+    // assertions...
+}
 ```
 
 ---
