@@ -121,8 +121,7 @@ go_container_system/
 │   │   ├── value.go         # Value interface and base implementation
 │   │   └── container.go     # ValueContainer implementation
 │   ├── di/             # Dependency injection support
-│   │   ├── provider.go      # ContainerFactory interface and provider
-│   │   └── wire.go          # Google Wire provider set
+│   │   └── provider.go      # ContainerFactory interface and provider
 │   ├── messaging/      # Fluent builder API
 │   │   └── builder.go       # ContainerBuilder implementation
 │   └── values/         # Concrete value implementations
@@ -296,8 +295,13 @@ import (
     "github.com/kcenon/go_container_system/container/di"
 )
 
+var ProviderSet = wire.NewSet(
+    di.NewContainerFactory,
+    wire.Bind(new(di.ContainerFactory), new(*di.DefaultContainerFactory)),
+)
+
 func InitializeApp() (*App, error) {
-    wire.Build(di.ProviderSet, NewApp)
+    wire.Build(ProviderSet, NewApp)
     return nil, nil
 }
 

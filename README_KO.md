@@ -131,8 +131,13 @@ import (
     "github.com/kcenon/go_container_system/container/di"
 )
 
+var ProviderSet = wire.NewSet(
+    di.NewContainerFactory,
+    wire.Bind(new(di.ContainerFactory), new(*di.DefaultContainerFactory)),
+)
+
 func InitializeApp() (*App, error) {
-    wire.Build(di.ProviderSet, NewApp)
+    wire.Build(ProviderSet, NewApp)
     return nil, nil
 }
 
@@ -172,8 +177,7 @@ go_container_system/
 │   │   ├── value.go         # Value 인터페이스 및 기본 구현
 │   │   └── container.go     # ValueContainer 구현
 │   ├── di/             # 의존성 주입 지원
-│   │   ├── provider.go      # ContainerFactory 인터페이스 및 프로바이더
-│   │   └── wire.go          # Google Wire 프로바이더 세트
+│   │   └── provider.go      # ContainerFactory 인터페이스 및 프로바이더
 │   ├── messaging/      # 플루언트 빌더 API
 │   │   └── builder.go       # ContainerBuilder 구현
 │   └── values/         # 구체적인 값 구현

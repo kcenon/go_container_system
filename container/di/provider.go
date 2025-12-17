@@ -22,8 +22,13 @@ All rights reserved.
 //	    "github.com/kcenon/go_container_system/container/di"
 //	)
 //
+//	var ProviderSet = wire.NewSet(
+//	    di.NewContainerFactory,
+//	    wire.Bind(new(di.ContainerFactory), new(*di.DefaultContainerFactory)),
+//	)
+//
 //	func InitializeApp() (*App, error) {
-//	    wire.Build(di.ProviderSet, NewApp)
+//	    wire.Build(ProviderSet, NewApp)
 //	    return nil, nil
 //	}
 //
