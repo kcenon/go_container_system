@@ -37,6 +37,10 @@ Go Container System은 Go를 위한 고성능 타입 안전 컨테이너 프레�
 - **플루언트 빌더 API**: 가독성 높은 컨테이너 생성을 위한 ContainerBuilder 패턴
   - source, target, type, values를 위한 체이닝 메서드
   - 선택적 스레드 안전 모드
+- **의존성 주입 지원**: DI 프레임워크를 위한 표준 인터페이스 및 프로바이더
+  - 손쉬운 모킹 및 테스트를 위한 ContainerFactory 인터페이스
+  - 자동 와이어링을 위한 Google Wire 프로바이더 세트
+  - Uber Dig 및 기타 DI 컨테이너와 호환
 
 ## 설치
 
@@ -104,6 +108,44 @@ container, err := messaging.NewContainerBuilder().
     Build()
 ```
 
+### 의존성 주입 사용
+
+```go
+import "github.com/kcenon/go_container_system/container/di"
+
+// ContainerFactory 직접 사용
+factory := di.NewContainerFactory()
+container := factory.NewContainer()
+container = factory.NewContainerWithType("request")
+builder := factory.NewBuilder()
+
+// Google Wire와 함께 사용
+// wire.go
+//go:build wireinject
+// +build wireinject
+
+package main
+
+import (
+    "github.com/google/wire"
+    "github.com/kcenon/go_container_system/container/di"
+)
+
+var ProviderSet = wire.NewSet(
+    di.NewContainerFactory,
+    wire.Bind(new(di.ContainerFactory), new(*di.DefaultContainerFactory)),
+)
+
+func InitializeApp() (*App, error) {
+    wire.Build(ProviderSet, NewApp)
+    return nil, nil
+}
+
+// Uber Dig와 함께 사용
+container := dig.New()
+container.Provide(di.NewContainerFactory)
+```
+
 ### 컨테이너 값 작업
 
 ```go
@@ -134,6 +176,8 @@ go_container_system/
 │   │   ├── value_types.go   # 값 타입 열거형
 │   │   ├── value.go         # Value 인터페이스 및 기본 구현
 │   │   └── container.go     # ValueContainer 구현
+│   ├── di/             # 의존성 주입 지원
+│   │   └── provider.go      # ContainerFactory 인터페이스 및 프로바이더
 │   ├── messaging/      # 플루언트 빌더 API
 │   │   └── builder.go       # ContainerBuilder 구현
 │   └── values/         # 구체적인 값 구현
