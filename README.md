@@ -37,6 +37,10 @@ The Go Container System is a high-performance, type-safe container framework for
 - **Fluent Builder API**: ContainerBuilder pattern for readable container construction
   - Chainable methods for source, target, type, and values
   - Optional thread-safe mode
+- **Dependency Injection Support**: Standard interfaces and providers for DI frameworks
+  - ContainerFactory interface for easy mocking and testing
+  - Google Wire provider set for automatic wiring
+  - Compatible with Uber Dig and other DI containers
 
 ## Installation
 
@@ -116,6 +120,9 @@ go_container_system/
 │   │   ├── value_types.go   # Value type enumeration
 │   │   ├── value.go         # Value interface and base implementation
 │   │   └── container.go     # ValueContainer implementation
+│   ├── di/             # Dependency injection support
+│   │   ├── provider.go      # ContainerFactory interface and provider
+│   │   └── wire.go          # Google Wire provider set
 │   ├── messaging/      # Fluent builder API
 │   │   └── builder.go       # ContainerBuilder implementation
 │   └── values/         # Concrete value implementations
@@ -264,6 +271,39 @@ container, err := messaging.NewContainerBuilder().
     ).
     WithThreadSafe(true).
     Build()
+```
+
+### Dependency Injection
+
+```go
+import "github.com/kcenon/go_container_system/container/di"
+
+// Using ContainerFactory directly
+factory := di.NewContainerFactory()
+container := factory.NewContainer()
+container = factory.NewContainerWithType("request")
+builder := factory.NewBuilder()
+
+// Using with Google Wire
+// wire.go
+//go:build wireinject
+// +build wireinject
+
+package main
+
+import (
+    "github.com/google/wire"
+    "github.com/kcenon/go_container_system/container/di"
+)
+
+func InitializeApp() (*App, error) {
+    wire.Build(di.ProviderSet, NewApp)
+    return nil, nil
+}
+
+// Using with Uber Dig
+container := dig.New()
+container.Provide(di.NewContainerFactory)
 ```
 
 ## Examples
