@@ -11,6 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **ContainerBuilder**: Fluent builder API for readable container construction
+  - Chainable methods: `WithSource()`, `WithTarget()`, `WithType()`, `WithValues()`
+  - Optional thread-safe mode via `WithThreadSafe()`
+  - Located in `container/messaging` package
+- **Dependency Injection Support**: Standard interfaces for DI frameworks
+  - `ContainerFactory` interface for easy mocking and testing
+  - `DefaultContainerFactory` implementation
+  - Compatible with Google Wire and Uber Dig
+  - Located in `container/di` package
+
 ### Planned
 - SIMD optimizations for numeric operations (AVX2, NEON)
 - Async/await support for non-blocking I/O operations
